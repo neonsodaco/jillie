@@ -36,6 +36,10 @@
 .c-teal       { --c: #4f9b94; --c-tint: #ddedeb; --c-deep: #2c6660; }
 .c-plum       { --c: #8e6c9e; --c-tint: #ebe3f0; --c-deep: #5f4472; }
 .c-olive      { --c: #8b8653; --c-tint: #ebe9d8; --c-deep: #57532c; }
+.c-slate      { --c: #6b7f93; --c-tint: #e4e9ee; --c-deep: #41576b; }
+.c-walnut     { --c: #8a6f4b; --c-tint: #efe7db; --c-deep: #5b4426; }
+.c-berry      { --c: #a04e62; --c-tint: #f2e0e5; --c-deep: #74303f; }
+.c-pine       { --c: #4e7d53; --c-tint: #dfebe1; --c-deep: #2e5233; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
@@ -289,10 +293,10 @@ a { color: inherit; text-decoration: none; }
 .prio-btn.sel-normal { background: #ece9e3; border-color: #b7ac9e; color: var(--ink); }
 .prio-btn.sel-high { background: var(--c-tint, #f7e6dd); border-color: var(--c, var(--accent)); color: var(--c-deep, var(--accent-deep)); }
 
-/* colour picker — compact fixed-size circles, never screen-filling */
-.swatch-grid { display: flex; flex-wrap: wrap; gap: 0.625rem; }
+/* colour picker — a tidy 6 x 2 grid of compact circles, no gaps */
+.swatch-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.625rem; justify-items: center; }
 .swatch {
-  width: 2.75rem; height: 2.75rem; flex: none; border-radius: 50%; background: var(--c); position: relative;
+  width: 100%; max-width: 3rem; aspect-ratio: 1; border-radius: 50%; background: var(--c); position: relative;
   border: 3px solid transparent;
 }
 .swatch.sel { border-color: var(--ink); transform: scale(1.05); }

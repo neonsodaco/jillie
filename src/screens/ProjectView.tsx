@@ -28,6 +28,8 @@ export default function ProjectView() {
   const [confirmTaskDelete, setConfirmTaskDelete] = useState<NumberedTask | null>(null);
   const [renameText, setRenameText] = useState('');
   const quickRef = useRef<HTMLInputElement>(null);
+  const addBusy = useRef(false); // double-tap guard: one add at a time
+  const lastOrder = useRef(0); // keeps step order monotonic during rapid entry
 
   // live rows for this screen
   const tasks = useMemo(() => active(allTasks), [allTasks]);
@@ -96,27 +98,38 @@ export default function ProjectView() {
 
   async function addQuick() {
     const name = quickName.trim();
-    if (!name || !id) return;
-    const tops = tasks.filter((t) => t.parentTaskId === null);
-    await db.tasks.add({
-      id: uid(),
-      projectId: id,
-      parentTaskId: null,
-      sortOrder: appendOrder(tops),
-      name,
-      priority: 'normal',
-      physicalDemand: 'medium',
-      done: false,
-      archivedAt: null,
-      deletedAt: null,
-      doneBy: '',
-      dueDate: null,
-      involvedNotes: '',
-      createdAt: Date.now(),
-      completedAt: null
-    });
+    if (!name || !id || addBusy.current) return;
+    addBusy.current = true;
+    // clear the field straight away so she can type the next task immediately
     setQuickName('');
     quickRef.current?.focus();
+    const tops = tasks.filter((t) => t.parentTaskId === null);
+    const order = Math.max(appendOrder(tops), lastOrder.current + 1);
+    lastOrder.current = order;
+    try {
+      await db.tasks.add({
+        id: uid(),
+        projectId: id,
+        parentTaskId: null,
+        sortOrder: order,
+        name,
+        priority: 'normal',
+        physicalDemand: 'medium',
+        done: false,
+        archivedAt: null,
+        deletedAt: null,
+        doneBy: '',
+        dueDate: null,
+        involvedNotes: '',
+        createdAt: Date.now(),
+        completedAt: null
+      });
+    } catch {
+      setQuickName(name);
+      undo.toast("That didn't save — try again.");
+    } finally {
+      addBusy.current = false;
+    }
   }
 
   async function addSubStep(parent: NumberedTask) {

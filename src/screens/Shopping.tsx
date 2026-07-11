@@ -153,10 +153,13 @@ export default function Shopping() {
           projects={activeProjects.map((p) => ({ id: p.id, name: p.name, colour: p.colour }))}
           defaultProject={projectFilter !== 'all' ? projectFilter : activeProjects[0]?.id}
           onClose={() => setAdding(false)}
-          onAdd={async (name, projectId, store) => {
-            await db.shopItems.add({ id: uid(), projectId, taskId: null, name, store, done: false, createdAt: Date.now() });
-            localStorage.setItem('shop.lastStore', store);
+          onAdd={(name, projectId, store) => {
+            // close first, then save — the popup never lingers
             setAdding(false);
+            db.shopItems
+              .add({ id: uid(), projectId, taskId: null, name, store, done: false, createdAt: Date.now() })
+              .then(() => localStorage.setItem('shop.lastStore', store))
+              .catch(() => undo.toast("That didn't save — try again."));
           }}
         />
       )}

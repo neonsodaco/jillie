@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { purgeLeftovers, requestPersistentStorage } from './db';
+import { purgeLeftovers, requestPersistentStorage, armDbResilience, ensureDbAlive } from './db';
 import { noteFirstRun } from './lib/backup';
 import { UndoProvider } from './lib/undo';
 import { BottomNav } from './components/ui';
@@ -41,11 +41,31 @@ function Shell() {
 
 export default function App() {
   const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem(WELCOME_KEY));
+  // bumped whenever the database connection had to be revived, so every
+  // live query on screen resubscribes to the fresh connection
+  const [dbEpoch, setDbEpoch] = useState(0);
 
   useEffect(() => {
     noteFirstRun();
     requestPersistentStorage();
     void purgeLeftovers();
+    armDbResilience(() => setDbEpoch((e) => e + 1));
+
+    // phones close the database while the app sleeps: on every wake-up,
+    // check the connection and check for a newer version of the app
+    const onWake = () => {
+      if (document.visibilityState !== 'visible') return;
+      void ensureDbAlive().then((result) => {
+        if (result === 'reopened') setDbEpoch((e) => e + 1);
+      });
+      void navigator.serviceWorker?.getRegistration?.().then((reg) => reg?.update());
+    };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('pageshow', onWake);
+    return () => {
+      document.removeEventListener('visibilitychange', onWake);
+      window.removeEventListener('pageshow', onWake);
+    };
   }, []);
 
   return (
@@ -59,7 +79,7 @@ export default function App() {
             }}
           />
         )}
-        <Shell />
+        <Shell key={dbEpoch} />
       </HashRouter>
     </UndoProvider>
   );

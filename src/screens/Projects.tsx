@@ -118,11 +118,14 @@ export default function Projects() {
       {creating && (
         <NewProjectSheet
           onClose={() => setCreating(false)}
-          onCreate={async (name, colour) => {
-            const id = uid();
-            await db.projects.add({ id, name, colour, archivedAt: null, deletedAt: null, createdAt: Date.now() });
+          onCreate={(name, colour) => {
+            // close first, then save — the popup never lingers
             setCreating(false);
-            navigate(`/project/${id}`);
+            const id = uid();
+            db.projects
+              .add({ id, name, colour, archivedAt: null, deletedAt: null, createdAt: Date.now() })
+              .then(() => navigate(`/project/${id}`))
+              .catch(() => undo.toast("That didn't save — try again."));
           }}
         />
       )}

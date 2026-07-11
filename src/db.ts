@@ -2,7 +2,8 @@ import Dexie, { type Table } from 'dexie';
 
 export type ColourKey =
   | 'terracotta' | 'sage' | 'cornflower' | 'marigold'
-  | 'rose' | 'teal' | 'plum' | 'olive';
+  | 'rose' | 'teal' | 'plum' | 'olive'
+  | 'slate' | 'walnut' | 'berry' | 'pine';
 
 export const COLOURS: { key: ColourKey; label: string }[] = [
   { key: 'terracotta', label: 'Terracotta' },
@@ -12,7 +13,11 @@ export const COLOURS: { key: ColourKey; label: string }[] = [
   { key: 'rose', label: 'Dusty rose' },
   { key: 'teal', label: 'Teal' },
   { key: 'plum', label: 'Plum' },
-  { key: 'olive', label: 'Olive' }
+  { key: 'olive', label: 'Olive' },
+  { key: 'slate', label: 'Slate' },
+  { key: 'walnut', label: 'Walnut' },
+  { key: 'berry', label: 'Berry' },
+  { key: 'pine', label: 'Pine' }
 ];
 
 export type Priority = 'low' | 'normal' | 'high';
@@ -128,6 +133,12 @@ class TrackerDB extends Dexie {
 
 export const db = new TrackerDB();
 
+// debug handle: lets us inspect or exercise the database from devtools
+// (e.g. remotely helping Jillian via chrome://inspect) and from tests
+if (typeof window !== 'undefined') {
+  (window as unknown as { __jillieDb: TrackerDB }).__jillieDb = db;
+}
+
 export const uid = (): string =>
   crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -177,5 +188,61 @@ export async function purgeLeftovers(): Promise<void> {
 export function requestPersistentStorage(): void {
   if (navigator.storage?.persist) {
     navigator.storage.persist().catch(() => undefined);
+  }
+}
+
+/* ---- connection resilience ----------------------------------------------
+   Android closes IndexedDB connections when the phone locks or the app
+   sleeps. Without handling, every later read shows nothing and every write
+   silently hangs — data looks lost and buttons look dead. These hooks
+   reopen the connection (or reload the app) so it always comes back. */
+
+export function armDbResilience(onRecovered: () => void): void {
+  try {
+    // another window/tab upgraded the schema: reload to match it
+    db.on('versionchange', () => {
+      try {
+        db.close();
+      } catch {
+        /* already closing */
+      }
+      window.location.reload();
+    });
+    // connection killed underneath us: reopen, or reload as a last resort
+    db.on('close', () => {
+      window.setTimeout(() => {
+        if (db.isOpen()) return;
+        db.open()
+          .then(() => onRecovered())
+          .catch(() => window.location.reload());
+      }, 150);
+    });
+  } catch {
+    /* event not supported: the wake-up probe below still covers recovery */
+  }
+}
+
+/** Probe the connection; reopen if dead. Returns whether a reopen happened. */
+export async function ensureDbAlive(): Promise<'ok' | 'reopened'> {
+  try {
+    if (!db.isOpen()) {
+      await db.open();
+      return 'reopened';
+    }
+    await db.projects.limit(1).count();
+    return 'ok';
+  } catch {
+    try {
+      db.close();
+    } catch {
+      /* ignore */
+    }
+    try {
+      await db.open();
+      return 'reopened';
+    } catch {
+      window.location.reload();
+      return 'reopened';
+    }
   }
 }

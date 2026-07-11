@@ -74,25 +74,35 @@ function TaskForm({ task }: { task: Task }) {
   async function addShopItem() {
     const itemName = shopName.trim();
     if (!itemName) return;
-    await db.shopItems.add({
-      id: uid(),
-      projectId: task.projectId,
-      taskId: task.id,
-      name: itemName,
-      store: shopStore,
-      done: false,
-      createdAt: Date.now()
-    });
-    localStorage.setItem('shop.lastStore', shopStore);
-    setShopName('');
-    undo.toast(`${itemName} added to the shopping list.`);
+    setShopName(''); // clear straight away, ready for the next item
+    try {
+      await db.shopItems.add({
+        id: uid(),
+        projectId: task.projectId,
+        taskId: task.id,
+        name: itemName,
+        store: shopStore,
+        done: false,
+        createdAt: Date.now()
+      });
+      localStorage.setItem('shop.lastStore', shopStore);
+      undo.toast(`${itemName} added to the shopping list.`);
+    } catch {
+      setShopName(itemName);
+      undo.toast("That didn't save — try again.");
+    }
   }
 
   async function addUpdate() {
     const text = newUpdate.trim();
     if (!text) return;
-    await db.updates.add({ id: uid(), taskId: task.id, text, createdAt: Date.now() });
-    setNewUpdate('');
+    setNewUpdate(''); // clear straight away, ready for the next note
+    try {
+      await db.updates.add({ id: uid(), taskId: task.id, text, createdAt: Date.now() });
+    } catch {
+      setNewUpdate(text);
+      undo.toast("That didn't save — try again.");
+    }
   }
 
   async function addPhotos(files: FileList | null) {
