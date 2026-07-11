@@ -25,16 +25,17 @@ export type Priority = 'low' | 'normal' | 'high';
 /** How much oomph a task takes — Guide Me matches tasks to Jillian's energy. */
 export type PhysicalDemand = 'low' | 'medium' | 'high';
 
+// alphabetical, so the right store is easy to find in the picker
 export const STORE_TYPES = [
-  'Hardware Store',
-  'Discount Store',
-  'Supermarket',
-  'Online',
+  'Automotive Store',
   'Boating Store',
   'Caravan Store',
-  'Automotive Store',
+  'Discount Store',
+  'Hardware Store',
   'Marketplace',
-  'Other'
+  'Online',
+  'Other',
+  'Supermarket'
 ] as const;
 export type StoreType = (typeof STORE_TYPES)[number];
 
@@ -95,7 +96,8 @@ export interface ShopItem {
   taskId: string | null; // the task she was on when she ran out of something
   name: string;
   store: StoreType;
-  done: boolean; // in the trolley
+  done: boolean; // bought
+  clearedAt: number | null; // tidied off the shopping list, but NEVER off its task
   createdAt: number;
 }
 
@@ -128,6 +130,22 @@ class TrackerDB extends Dexie {
             if (!t.physicalDemand) t.physicalDemand = 'medium';
           })
       );
+    this.version(3).upgrade(async (tx) => {
+      // cleared items stay on their tasks; they only leave the shopping list
+      await tx
+        .table('shopItems')
+        .toCollection()
+        .modify((i) => {
+          if (i.clearedAt === undefined) i.clearedAt = null;
+        });
+      // task archiving was removed from the app: release anything stranded
+      await tx
+        .table('tasks')
+        .toCollection()
+        .modify((t) => {
+          if (t.archivedAt !== null) t.archivedAt = null;
+        });
+    });
   }
 }
 

@@ -94,6 +94,31 @@ export default function Dashboard() {
         {recentWins(tasks) > 0 && <div className="wins">{winsLine(recentWins(tasks))}</div>}
       </div>
 
+      {activeProjects.length > 0 && (
+        <>
+          <div className="feed-head">Your projects</div>
+          <div className="chip-row">
+            {activeProjects.map((p) => {
+              const pt = active(tasks).filter((t) => t.projectId === p.id);
+              const { done, total } = progress(pt);
+              return (
+                <button
+                  key={p.id}
+                  className={`proj-chip ${colourClass(p.colour)}`}
+                  onClick={() => navigate(`/project/${p.id}`)}
+                >
+                  <div className="pname">{p.name}</div>
+                  <ProgressBar done={done} total={total} />
+                  <div className="progress-words">
+                    {total === 0 ? 'No tasks yet' : `${done} of ${total} done`}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       {flatFeed.length === 0 ? (
         <div className="card nothing-today">
           <div className="big">Nothing needs you today, {NAME}.</div>
@@ -144,31 +169,6 @@ export default function Dashboard() {
               Show more ({hiddenCount} more)
             </button>
           )}
-        </>
-      )}
-
-      {activeProjects.length > 0 && (
-        <>
-          <div className="feed-head">Your projects</div>
-          <div className="chip-row">
-            {activeProjects.map((p) => {
-              const pt = active(tasks).filter((t) => t.projectId === p.id);
-              const { done, total } = progress(pt);
-              return (
-                <button
-                  key={p.id}
-                  className={`proj-chip ${colourClass(p.colour)}`}
-                  onClick={() => navigate(`/project/${p.id}`)}
-                >
-                  <div className="pname">{p.name}</div>
-                  <ProgressBar done={done} total={total} />
-                  <div className="progress-words">
-                    {total === 0 ? 'No tasks yet' : `${done} of ${total} done`}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
         </>
       )}
 

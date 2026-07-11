@@ -116,6 +116,11 @@ export const IconHeart = (p: P = {}) => (
     <path d="M12 20.5C7 16.5 3.5 13.2 3.5 9.6A4.4 4.4 0 0 1 8 5.2c1.6 0 3.1.8 4 2.1a4.9 4.9 0 0 1 4-2.1 4.4 4.4 0 0 1 4.5 4.4c0 3.6-3.5 6.9-8.5 10.9Z" />
   </svg>
 );
+export const IconClose = (p: P = {}) => (
+  <svg {...S(p)} aria-hidden>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
 export const IconPalette = (p: P = {}) => (
   <svg {...S(p)} aria-hidden>
     <path d="M12 3a9 9 0 1 0 .6 17.98c1.6-.1 1.9-1.6 1.2-2.6-.8-1.2 0-2.9 1.6-2.9H18a3 3 0 0 0 3-3A9.5 9.5 0 0 0 12 3Z" />

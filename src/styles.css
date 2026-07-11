@@ -21,8 +21,8 @@
   --shadow-lift: 0 2px 4px rgba(70, 55, 40, 0.08), 0 10px 28px rgba(70, 55, 40, 0.12);
   --radius: 1.125rem;
   --radius-sm: 0.75rem;
-  --accent: #c4704f;
-  --accent-deep: #8f4a2e;
+  --accent: #7c3aed;      /* Jillie purple — readable with white text */
+  --accent-deep: #5b21b6;
   --danger: #b3503e;
   --good: #5b7f4d;
 }
@@ -120,19 +120,25 @@ a { color: inherit; text-decoration: none; }
 }
 .nothing-today .big { font-size: 1rem; font-weight: 800; color: var(--ink); margin-bottom: 0.25rem; }
 
-/* ---------- project chips (dashboard) ---------- */
+/* ---------- project chips (dashboard) ----------
+   Projects are SOLID project-colour with white text, so they can never be
+   mistaken for tasks (which stay on light cards). */
 .chip-row { display: flex; gap: 0.625rem; overflow-x: auto; padding: 0.25rem 0.125rem 0.75rem; scrollbar-width: none; }
 .chip-row::-webkit-scrollbar { display: none; }
 .proj-chip {
   flex: none; min-width: 8.5rem; max-width: 11rem; text-align: left;
-  background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
-  border: 1px solid rgba(236, 229, 219, 0.6);
+  background: var(--c-deep); color: #fff;
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  border: none;
   padding: 0.75rem 0.875rem;
 }
 .proj-chip .pname {
   font-weight: 800; font-size: 0.875rem; margin-bottom: 0.375rem;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-deep);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff;
 }
+.proj-chip .progress { background: rgba(255, 255, 255, 0.28); }
+.proj-chip .progress-fill { background: #fff; }
+.proj-chip .progress-words { color: rgba(255, 255, 255, 0.85); }
 
 /* ---------- progress ---------- */
 .progress { height: 0.75rem; border-radius: 999px; background: var(--c-tint, #eee7dd); overflow: hidden; position: relative; }
@@ -151,18 +157,23 @@ a { color: inherit; text-decoration: none; }
 @keyframes shimmer { from { background-position: 180% 0; } to { background-position: -80% 0; } }
 .progress-words { font-size: 0.75rem; color: var(--ink-soft); margin-top: 0.375rem; }
 
-/* ---------- project cards (all projects) ---------- */
+/* ---------- project cards (all projects) ----------
+   Solid project colour with white text — unmistakably a project. */
 .proj-card {
   display: flex; width: 100%; text-align: left; overflow: hidden;
-  background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
-  border: 1px solid rgba(236, 229, 219, 0.6); margin-bottom: 0.75rem;
+  background: var(--c-deep); color: #fff;
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  border: none; margin-bottom: 0.75rem;
 }
 .proj-card .band { width: 0.5rem; flex: none; background: var(--c); border-radius: 0.5rem 0 0 0.5rem; }
-.proj-card .inner { flex: 1; min-width: 0; padding: 0.875rem 1rem; text-align: left; }
+.proj-card .inner { flex: 1; min-width: 0; padding: 0.875rem 1rem; text-align: left; color: #fff; }
 .proj-card .prow { display: flex; align-items: center; gap: 0.5rem; }
-.proj-card h3 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; }
-.proj-card .next { font-size: 0.8125rem; color: var(--ink-soft); margin-top: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.proj-card .progress { margin-top: 0.625rem; }
+.proj-card h3 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; color: #fff; }
+.proj-card .next { font-size: 0.8125rem; color: rgba(255, 255, 255, 0.85); margin-top: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj-card .progress { margin-top: 0.625rem; background: rgba(255, 255, 255, 0.28); }
+.proj-card .progress-fill { background: #fff; }
+.proj-card .progress-words { color: rgba(255, 255, 255, 0.85); }
+.proj-card .iconbtn { color: rgba(255, 255, 255, 0.9); }
 
 /* ---------- task rows ---------- */
 .task-row {
@@ -340,7 +351,8 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- sheets & dialogs ---------- */
 .sheet-backdrop {
-  position: fixed; inset: 0; background: rgba(46, 42, 38, 0.4); z-index: 50;
+  /* above the photo viewer (60), so confirm popups are always pressable */
+  position: fixed; inset: 0; background: rgba(46, 42, 38, 0.4); z-index: 65;
   display: flex; align-items: flex-end; justify-content: center;
   animation: fade-in 0.18s ease both;
 }
@@ -383,6 +395,10 @@ a { color: inherit; text-decoration: none; }
 @keyframes snack-up { from { transform: translateY(1.5rem); opacity: 0.4; } to { transform: none; opacity: 1; } }
 .snackbar .msg { flex: 1; font-weight: 700; font-size: 0.8125rem; }
 .snackbar .undo { color: #f2c94c; font-weight: 800; padding: 0.5rem 0.75rem; flex: none; }
+.snack-close {
+  color: rgba(247, 243, 236, 0.75); font-weight: 800; font-size: 0.9375rem;
+  padding: 0.5rem 0.625rem; flex: none; min-width: 2.25rem;
+}
 
 /* ---------- backup nudge ---------- */
 .nudge { padding: 0.875rem 1rem; margin-top: 1.25rem; display: flex; gap: 0.75rem; align-items: center; }
@@ -521,6 +537,20 @@ a { color: inherit; text-decoration: none; }
 /* editable shopping rows */
 .shop-row .body.editable { text-align: left; border-radius: var(--radius-sm); }
 .shop-row .body.editable:active { background: rgba(70, 55, 40, 0.05); }
+
+/* store picker button (opens a sheet with an explicit Close) */
+.picker-btn {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  background: var(--card); border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm); padding: 0.625rem 0.875rem; min-height: 2.875rem;
+  font-weight: 700; text-align: left; width: 100%;
+}
+.picker-btn .chev { color: var(--ink-faint); flex: none; }
+
+/* note rows: stamp + options on one line; latest-notes list on project view */
+.update-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.latest-note { display: block; width: 100%; text-align: left; }
+.latest-note:active { background: rgba(70, 55, 40, 0.05); }
 
 /* links inside notes */
 .note-link {

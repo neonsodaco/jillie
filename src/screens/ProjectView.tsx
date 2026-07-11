@@ -3,9 +3,10 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, uid, active, hardDeleteProject, hardDeleteTasks, taskFamilyIds, type Task } from '../db';
 import { numberTasks, appendOrder, orderAt, progress, type NumberedTask } from '../lib/numbering';
-import { dueLine } from '../lib/dates';
+import { dueLine, stampWords } from '../lib/dates';
 import { tickMessage } from '../lib/encourage';
 import { celebrateTick } from '../lib/confetti';
+import { Linkify } from '../components/Linkify';
 import { ProgressBar, progressWords, Sheet, SheetItem, ConfirmSheet, ColourPicker, colourClass } from '../components/ui';
 import { IconBack, IconDots, IconTick, IconGrip, IconArchive, IconTrash, IconPencil, IconPalette, IconPlus, IconCamera, IconFlag } from '../components/icons';
 import { useUndo } from '../lib/undo';
@@ -18,6 +19,7 @@ export default function ProjectView() {
   const project = useLiveQuery(() => (id ? db.projects.get(id) : undefined), [id]);
   const allTasks = useLiveQuery(() => (id ? db.tasks.where('projectId').equals(id).toArray() : []), [id]) ?? [];
   const photos = useLiveQuery(() => db.photos.toArray(), []) ?? [];
+  const allUpdates = useLiveQuery(() => db.updates.toArray(), []) ?? [];
 
   const [quickName, setQuickName] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -36,6 +38,16 @@ export default function ProjectView() {
   const numbered = useMemo(() => numberTasks(tasks), [tasks]);
   const { done, total } = progress(tasks);
   const allDone = total > 0 && done === total;
+
+  // the two freshest notes across every task in this project
+  const latestNotes = useMemo(() => {
+    const byId = new Map(tasks.map((t) => [t.id, t]));
+    return allUpdates
+      .filter((u) => byId.has(u.taskId))
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 2)
+      .map((u) => ({ update: u, task: byId.get(u.taskId)! }));
+  }, [allUpdates, tasks]);
 
   const photoCount = useMemo(() => {
     const m = new Map<string, number>();
@@ -167,19 +179,6 @@ export default function ProjectView() {
     }
   }
 
-  function archiveTask(n: NumberedTask) {
-    setTaskMenu(null);
-    void (async () => {
-      const ids = await taskFamilyIds(n.task.id);
-      await db.tasks.where('id').anyOf(ids).modify({ archivedAt: Date.now() });
-      undo.run({
-        message: `${n.task.name || 'Task'} moved to the Archive.`,
-        revert: () => db.tasks.where('id').anyOf(ids).modify({ archivedAt: null }).then(() => undefined),
-        commit: () => undefined
-      });
-    })();
-  }
-
   function deleteTask(n: NumberedTask) {
     setConfirmTaskDelete(null);
     setTaskMenu(null);
@@ -237,6 +236,26 @@ export default function ProjectView() {
       </div>
 
       {allDone && <div className="celebrate">Project finished — well done, Jillian.</div>}
+
+      {latestNotes.length > 0 && (
+        <>
+          <div className="feed-head">Latest updates</div>
+          <div className="card" style={{ padding: '0.25rem 1rem', marginBottom: '1rem' }}>
+            {latestNotes.map(({ update, task: noteTask }) => (
+              <button
+                key={update.id}
+                className="update-item latest-note"
+                onClick={() => navigate(`/task/${noteTask.id}`)}
+              >
+                <div className="update-when">
+                  {stampWords(update.createdAt, true)} · {noteTask.name || 'Untitled task'}
+                </div>
+                <Linkify text={update.text} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {numbered.length === 0 && (
         <div className="empty-note">
@@ -361,7 +380,6 @@ export default function ProjectView() {
           {!taskMenu.isSub && (
             <SheetItem icon={<IconPlus />} label={`Add a step under this (becomes ${taskMenu.label}.1, ${taskMenu.label}.2…)`} onClick={() => addSubStep(taskMenu)} />
           )}
-          <SheetItem icon={<IconArchive />} label="Archive — put it away, keep everything" onClick={() => archiveTask(taskMenu)} />
           <SheetItem icon={<IconTrash />} label="Delete" danger onClick={() => { setConfirmTaskDelete(taskMenu); setTaskMenu(null); }} />
         </Sheet>
       )}

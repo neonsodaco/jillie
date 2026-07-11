@@ -106,7 +106,8 @@ export default function HelpScreen() {
           the kind of shop it comes from, tap Add, and get on with what you were doing. The full list lives
           under <strong>Shopping</strong> at the bottom, sorted by store — and you can narrow it to one project
           or one kind of shop before you head out. Tap any item on the list to fix its name or store, and tick
-          it off when it lands in the trolley. On the task, green items are still to buy; grey means bought.
+          it off as you buy. "Clear ticked items" just tidies the Bought pile off this list — everything always
+          stays on its task. On the task, green items are still to buy; grey means bought.
         </p>
       </div>
 
@@ -128,9 +129,10 @@ export default function HelpScreen() {
       <div className="help-section">
         <h2>Archive and delete</h2>
         <p>
-          <strong>Archive</strong> puts something away but keeps every note and photo — you'll find it in the
-          Archive (the three dots on your Today screen), and you can put it back any time.
-          <strong> Delete</strong> is for real mistakes. After a delete you get 10 seconds to change your mind.
+          <strong>Archive</strong> puts a whole project away but keeps every task, note and photo — you'll find
+          it in the Archive (the three dots on your Today screen), and you can put it back any time.
+          <strong> Delete</strong> is for real mistakes. After a delete you get 10 seconds to change your mind,
+          and you can dismiss that little black bar early with its ✕ if it's in your way.
         </p>
       </div>
 

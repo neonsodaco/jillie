@@ -1,5 +1,6 @@
 // Generates the app icons as PNGs with no image dependencies:
-// a warm terracotta rounded square with a white tick.
+// a bright purple rounded square with a white tick — easy to spot
+// among the other apps on the home screen.
 import { deflateSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -72,8 +73,8 @@ function sdSegment(px, py, ax, ay, bx, by) {
 
 function drawIcon(size, { maskable }) {
   const rgba = Buffer.alloc(size * size * 4);
-  // terracotta gradient, top to bottom
-  const top = [0xc9, 0x77, 0x55], bottom = [0xac, 0x5b, 0x3c];
+  // bright purple gradient, top to bottom
+  const top = [0xa8, 0x55, 0xf7], bottom = [0x7c, 0x3a, 0xed];
   const cx = size / 2, cy = size / 2;
   const half = size / 2;
   const radius = maskable ? 0 : size * 0.225;

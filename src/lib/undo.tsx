@@ -81,11 +81,17 @@ export function UndoProvider({ children }: { children: ReactNode }) {
           <button className="undo" onClick={undo}>
             Undo
           </button>
+          <button className="snack-close" aria-label="Dismiss" onClick={settle}>
+            ✕
+          </button>
         </div>
       )}
       {!current && plainToast && (
         <div className="snackbar" role="status">
           <span className="msg">{plainToast}</span>
+          <button className="snack-close" aria-label="Dismiss" onClick={() => setPlainToast(null)}>
+            ✕
+          </button>
         </div>
       )}
     </UndoContext.Provider>

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, uid, active, STORE_TYPES, type ColourKey, type StoreType, type ShopItem } from '../db';
+import { db, uid, active, STORE_TYPES, type StoreType, type ShopItem } from '../db';
+import { progress } from '../lib/numbering';
 import { Sheet, colourClass, FieldLabel } from '../components/ui';
 import { ShopItemEditSheet } from '../components/ShopItemSheet';
+import { StorePicker } from '../components/StorePicker';
 import { IconTick, IconTrash, IconPlus } from '../components/icons';
 import { useUndo } from '../lib/undo';
 
@@ -14,6 +16,7 @@ export default function Shopping() {
   const undo = useUndo();
   const projects = useLiveQuery(() => db.projects.toArray(), []) ?? [];
   const items = useLiveQuery(() => db.shopItems.toArray(), []) ?? [];
+  const tasks = useLiveQuery(() => db.tasks.toArray(), []) ?? [];
 
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [storeFilter, setStoreFilter] = useState<string>('all');
@@ -22,6 +25,16 @@ export default function Shopping() {
 
   const activeProjects = active(projects).sort((a, b) => a.createdAt - b.createdAt);
   const projectsById = useMemo(() => new Map(activeProjects.map((p) => [p.id, p])), [activeProjects]);
+
+  // items can only be added for projects that still have something to do
+  const openProjects = useMemo(
+    () =>
+      activeProjects.filter((p) => {
+        const { done, total } = progress(active(tasks).filter((t) => t.projectId === p.id));
+        return total === 0 || done < total;
+      }),
+    [activeProjects, tasks]
+  );
 
   const visible = useMemo(
     () =>
@@ -33,7 +46,9 @@ export default function Shopping() {
     [items, projectsById, projectFilter, storeFilter]
   );
   const toBuy = visible.filter((i) => !i.done);
-  const gotIt = visible.filter((i) => i.done);
+  // bought items stay here until she clears them; clearing only hides them
+  // from this list — they NEVER leave their task
+  const gotIt = visible.filter((i) => i.done && i.clearedAt === null);
 
   // group the to-buy list by store so a shop trip reads top to bottom
   const byStore = useMemo(() => {
@@ -51,11 +66,11 @@ export default function Shopping() {
   }
 
   function clearGot() {
-    const cleared = [...gotIt];
-    void db.shopItems.bulkDelete(cleared.map((i) => i.id));
+    const ids = gotIt.map((i) => i.id);
+    void db.shopItems.where('id').anyOf(ids).modify({ clearedAt: Date.now() });
     undo.run({
-      message: `${cleared.length} ticked item${cleared.length === 1 ? '' : 's'} cleared.`,
-      revert: () => db.shopItems.bulkAdd(cleared).then(() => undefined),
+      message: `${ids.length} bought item${ids.length === 1 ? '' : 's'} tidied away.`,
+      revert: () => db.shopItems.where('id').anyOf(ids).modify({ clearedAt: null }).then(() => undefined),
       commit: () => undefined
     });
   }
@@ -134,7 +149,7 @@ export default function Shopping() {
 
       {gotIt.length > 0 && (
         <>
-          <div className="feed-head">In the trolley</div>
+          <div className="feed-head">Bought</div>
           {gotIt.map(row)}
           <button className="btn btn-ghost btn-block" onClick={clearGot}>
             <IconTrash size={16} /> Clear ticked items
@@ -142,7 +157,7 @@ export default function Shopping() {
         </>
       )}
 
-      <button className="fab-newproject" onClick={() => setAdding(true)} disabled={activeProjects.length === 0}>
+      <button className="fab-newproject" onClick={() => setAdding(true)} disabled={openProjects.length === 0}>
         + Add to the list
       </button>
 
@@ -150,14 +165,18 @@ export default function Shopping() {
 
       {adding && (
         <AddItemSheet
-          projects={activeProjects.map((p) => ({ id: p.id, name: p.name, colour: p.colour }))}
-          defaultProject={projectFilter !== 'all' ? projectFilter : activeProjects[0]?.id}
+          projects={openProjects.map((p) => ({ id: p.id, name: p.name }))}
+          defaultProject={
+            projectFilter !== 'all' && openProjects.some((p) => p.id === projectFilter)
+              ? projectFilter
+              : openProjects[0]?.id
+          }
           onClose={() => setAdding(false)}
           onAdd={(name, projectId, store) => {
             // close first, then save — the popup never lingers
             setAdding(false);
             db.shopItems
-              .add({ id: uid(), projectId, taskId: null, name, store, done: false, createdAt: Date.now() })
+              .add({ id: uid(), projectId, taskId: null, name, store, done: false, clearedAt: null, createdAt: Date.now() })
               .then(() => localStorage.setItem('shop.lastStore', store))
               .catch(() => undo.toast("That didn't save — try again."));
           }}
@@ -173,7 +192,7 @@ function AddItemSheet({
   onClose,
   onAdd
 }: {
-  projects: { id: string; name: string; colour: ColourKey }[];
+  projects: { id: string; name: string }[];
   defaultProject?: string;
   onClose: () => void;
   onAdd: (name: string, projectId: string, store: StoreType) => void;
@@ -191,7 +210,7 @@ function AddItemSheet({
         <input type="text" value={name} placeholder="e.g. Sandpaper, 120 grit" onChange={(e) => setName(e.target.value)} />
       </div>
       <div className="field">
-        <FieldLabel text="Which project is it for?" help="So the list can be sorted per project." />
+        <FieldLabel text="Which project is it for?" help="So the list can be sorted per project. Finished projects aren't offered." />
         <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
@@ -202,13 +221,7 @@ function AddItemSheet({
       </div>
       <div className="field">
         <FieldLabel text="Where from?" help="The kind of shop it comes from — handy for doing one store in one trip." />
-        <select value={store} onChange={(e) => setStore(e.target.value as StoreType)}>
-          {STORE_TYPES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        <StorePicker value={store} onChange={setStore} ariaLabel="Where from" />
       </div>
       <button
         className="btn btn-primary btn-block"

@@ -118,7 +118,9 @@ export async function restoreBackup(zipFile: Blob): Promise<{ projects: number; 
     await db.tasks.bulkAdd(data.tasks.map((t) => ({ ...t, physicalDemand: t.physicalDemand ?? 'medium' })));
     await db.updates.bulkAdd(data.updates);
     await db.photos.bulkAdd(photos);
-    if (data.shopItems?.length) await db.shopItems.bulkAdd(data.shopItems);
+    if (data.shopItems?.length) {
+      await db.shopItems.bulkAdd(data.shopItems.map((i) => ({ ...i, clearedAt: i.clearedAt ?? null })));
+    }
   });
 
   return { projects: data.projects.length, tasks: data.tasks.length, photos: photos.length };

@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, uid, active, hardDeleteTasks, taskFamilyIds, STORE_TYPES, type Task, type Photo, type Priority, type PhysicalDemand, type StoreType } from '../db';
+import { db, uid, active, hardDeleteTasks, taskFamilyIds, type Task, type Photo, type Priority, type PhysicalDemand, type StoreType, type Update } from '../db';
 import { labelMap } from '../lib/numbering';
 import { stampWords } from '../lib/dates';
 import { tickMessage } from '../lib/encourage';
 import { celebrateTick } from '../lib/confetti';
 import { Linkify } from '../components/Linkify';
 import { ShopItemEditSheet } from '../components/ShopItemSheet';
+import { StorePicker } from '../components/StorePicker';
 import { compressPhoto, storageTight } from '../lib/images';
 import { Sheet, SheetItem, ConfirmSheet, FieldLabel, colourClass } from '../components/ui';
-import { IconBack, IconDots, IconTick, IconArchive, IconTrash, IconCamera, IconPlus } from '../components/icons';
+import { IconBack, IconDots, IconTick, IconTrash, IconCamera, IconPlus, IconPencil } from '../components/icons';
 import { useUndo } from '../lib/undo';
 
 export default function TaskView() {
@@ -52,6 +53,9 @@ function TaskForm({ task }: { task: Task }) {
   const [confirmPhotoDelete, setConfirmPhotoDelete] = useState<Photo | null>(null);
   const [importing, setImporting] = useState(false);
   const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [noteMenu, setNoteMenu] = useState<Update | null>(null);
+  const [editingNote, setEditingNote] = useState<Update | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const label = useMemo(() => labelMap(active(siblings)).get(task.id) ?? '', [siblings, task.id]);
@@ -83,6 +87,7 @@ function TaskForm({ task }: { task: Task }) {
         name: itemName,
         store: shopStore,
         done: false,
+        clearedAt: null,
         createdAt: Date.now()
       });
       localStorage.setItem('shop.lastStore', shopStore);
@@ -124,18 +129,22 @@ function TaskForm({ task }: { task: Task }) {
     }
   }
 
-  function archiveTask() {
-    setMenuOpen(false);
-    void (async () => {
-      const ids = await taskFamilyIds(task.id);
-      await db.tasks.where('id').anyOf(ids).modify({ archivedAt: Date.now() });
+  function deleteNote(u: Update) {
+    setNoteMenu(null);
+    void db.updates.delete(u.id).then(() => {
       undo.run({
-        message: `${live.name || 'Task'} moved to the Archive.`,
-        revert: () => db.tasks.where('id').anyOf(ids).modify({ archivedAt: null }).then(() => undefined),
+        message: 'Note deleted.',
+        revert: () => db.updates.add(u).then(() => undefined),
         commit: () => undefined
       });
-      navigate(-1);
-    })();
+    });
+  }
+
+  function saveNoteEdit() {
+    const text = noteDraft.trim();
+    if (!editingNote || !text) return;
+    void db.updates.update(editingNote.id, { text });
+    setEditingNote(null);
   }
 
   function deleteTask() {
@@ -195,6 +204,18 @@ function TaskForm({ task }: { task: Task }) {
       </div>
 
       <div className="field">
+        <FieldLabel text="Task description" help="What this task is about — details, names, the shop, a phone number." />
+        <textarea
+          value={involved}
+          placeholder="What's this task about? Details, names, numbers…"
+          onChange={(e) => {
+            setInvolved(e.target.value);
+            save({ involvedNotes: e.target.value });
+          }}
+        />
+      </div>
+
+      <div className="field">
         <FieldLabel text="Priority" help="How important is this? High shows on your Today screen." />
         <div className="prio-row">
           {(['low', 'normal', 'high'] as Priority[]).map((p) => (
@@ -246,18 +267,6 @@ function TaskForm({ task }: { task: Task }) {
       </div>
 
       <div className="field">
-        <FieldLabel text="Who's involved" help="Notes about anyone connected to this — the plumber's name, the shop, a phone number." />
-        <textarea
-          value={involved}
-          placeholder="Names, shops, phone numbers…"
-          onChange={(e) => {
-            setInvolved(e.target.value);
-            save({ involvedNotes: e.target.value });
-          }}
-        />
-      </div>
-
-      <div className="field">
         <FieldLabel text="Photos" help="Screenshots and pictures. Found a supplier or something you like? Screenshot it, tap Share, and pick this app — or add it here from your gallery." />
         <div className="photo-grid">
           {sortedPhotos.map((p) => (
@@ -302,7 +311,17 @@ function TaskForm({ task }: { task: Task }) {
           )}
           {sortedUpdates.map((u) => (
             <div key={u.id} className="update-item">
-              <div className="update-when">{stampWords(u.createdAt, true)}</div>
+              <div className="update-head">
+                <div className="update-when">{stampWords(u.createdAt, true)}</div>
+                <button
+                  className="iconbtn"
+                  style={{ width: '2rem', height: '2rem' }}
+                  aria-label="Note options"
+                  onClick={() => setNoteMenu(u)}
+                >
+                  <IconDots size={16} />
+                </button>
+              </div>
               <Linkify text={u.text} />
             </div>
           ))}
@@ -314,28 +333,29 @@ function TaskForm({ task }: { task: Task }) {
           text="Run out of something?"
           help="Pop it on the shopping list without leaving this task. Type the item, pick where it comes from, tap Add. The full list lives under Shopping at the bottom of the app."
         />
-        <div className="shop-add">
-          <input
-            type="text"
-            value={shopName}
-            placeholder="e.g. Sandpaper, 120 grit"
-            aria-label="Item to add to the shopping list"
-            onChange={(e) => setShopName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addShopItem()}
-          />
-          <div className="shop-add-row">
-            <select value={shopStore} aria-label="Where to buy it" onChange={(e) => setShopStore(e.target.value as StoreType)}>
-              {STORE_TYPES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-            <button className="btn btn-tint" disabled={!shopName.trim()} onClick={addShopItem}>
-              <IconPlus size={16} /> Add
-            </button>
+        {!live.done && (
+          <div className="shop-add">
+            <input
+              type="text"
+              value={shopName}
+              placeholder="e.g. Sandpaper, 120 grit"
+              aria-label="Item to add to the shopping list"
+              onChange={(e) => setShopName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addShopItem()}
+            />
+            <div className="shop-add-row">
+              <StorePicker value={shopStore} onChange={setShopStore} />
+              <button className="btn btn-tint" disabled={!shopName.trim()} onClick={addShopItem}>
+                <IconPlus size={16} /> Add
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+        {live.done && shopItems.length === 0 && (
+          <div style={{ color: 'var(--ink-soft)', fontSize: '0.8125rem' }}>
+            This task is done, so nothing more can be added to its shopping list.
+          </div>
+        )}
         {shopItems.length > 0 && (
           <div className="shop-mini">
             {shopItems
@@ -364,20 +384,38 @@ function TaskForm({ task }: { task: Task }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', paddingTop: '0.5rem' }}>
-        <button className="btn btn-ghost" onClick={archiveTask}>
-          <IconArchive size={16} /> Archive task
-        </button>
-        <button className="btn btn-danger-ghost" onClick={() => setConfirmDelete(true)}>
-          <IconTrash size={16} /> Delete task
-        </button>
-      </div>
-
       {menuOpen && (
         <Sheet onClose={() => setMenuOpen(false)} label="Task options">
           <h2>{live.name || 'This task'}</h2>
-          <SheetItem icon={<IconArchive />} label="Archive — put it away, keep everything" onClick={archiveTask} />
           <SheetItem icon={<IconTrash />} label="Delete" danger onClick={() => { setConfirmDelete(true); setMenuOpen(false); }} />
+        </Sheet>
+      )}
+
+      {noteMenu && (
+        <Sheet onClose={() => setNoteMenu(null)} label="Note options">
+          <h2>This note</h2>
+          <SheetItem
+            icon={<IconPencil />}
+            label="Edit note"
+            onClick={() => {
+              setNoteDraft(noteMenu.text);
+              setEditingNote(noteMenu);
+              setNoteMenu(null);
+            }}
+          />
+          <SheetItem icon={<IconTrash />} label="Delete note" danger onClick={() => deleteNote(noteMenu)} />
+        </Sheet>
+      )}
+
+      {editingNote && (
+        <Sheet onClose={() => setEditingNote(null)} label="Edit note">
+          <h2>Edit note</h2>
+          <div className="field">
+            <textarea value={noteDraft} rows={3} onChange={(e) => setNoteDraft(e.target.value)} />
+          </div>
+          <button className="btn btn-primary btn-block" disabled={!noteDraft.trim()} onClick={saveNoteEdit}>
+            Save
+          </button>
         </Sheet>
       )}
 
