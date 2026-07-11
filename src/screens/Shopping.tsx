@@ -185,7 +185,7 @@ function AddItemSheet({
       <h2>Add to the shopping list</h2>
       <div className="field">
         <FieldLabel text="What do you need?" help="Just the item — 'Sandpaper, 120 grit', 'White gloss paint'." />
-        <input type="text" value={name} autoFocus placeholder="e.g. Sandpaper, 120 grit" onChange={(e) => setName(e.target.value)} />
+        <input type="text" value={name} placeholder="e.g. Sandpaper, 120 grit" onChange={(e) => setName(e.target.value)} />
       </div>
       <div className="field">
         <FieldLabel text="Which project is it for?" help="So the list can be sorted per project." />

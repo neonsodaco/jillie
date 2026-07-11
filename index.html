@@ -2,7 +2,13 @@
 <html lang="en-AU">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- Locked-down content security policy: only our own bundled code and assets
+         may run; no external scripts, styles, fonts, or network destinations. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
     <meta name="theme-color" content="#FAF7F2" />
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="icon" type="image/png" href="./icons/icon-192.png" />

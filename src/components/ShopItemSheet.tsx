@@ -19,7 +19,7 @@ export function ShopItemEditSheet({ item, onClose }: { item: ShopItem; onClose: 
       <h2>Fix this item</h2>
       <div className="field">
         <FieldLabel text="What is it?" help="Change the wording any time — right up until you've bought it." />
-        <input type="text" value={name} autoFocus onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveItem()} />
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveItem()} />
       </div>
       <div className="field">
         <FieldLabel text="Where from?" help="The kind of shop it comes from." />

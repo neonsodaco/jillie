@@ -16,16 +16,25 @@ precacheAndRoute(self.__WB_MANIFEST);
 
 // The Android share sheet posts shared screenshots here. We tuck them into
 // the database and send Jillian straight to the "Which task is this for?" screen.
+const MAX_SHARED_IMAGE_BYTES = 30 * 1024 * 1024;
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method === 'POST' && url.pathname.endsWith('/share-target')) {
+    // Only accept genuine OS share-sheet launches (Sec-Fetch-Site: none),
+    // never form posts from other websites.
+    const fetchSite = event.request.headers.get('sec-fetch-site');
+    if (fetchSite && fetchSite !== 'none') {
+      event.respondWith(Response.redirect(new URL('./', self.registration.scope).href, 303));
+      return;
+    }
     event.respondWith(
       (async () => {
         try {
           const form = await event.request.formData();
           const files = form.getAll('images').filter((f): f is File => f instanceof File);
-          for (const file of files) {
-            if (file.type.startsWith('image/')) {
+          for (const file of files.slice(0, 10)) {
+            if (file.type.startsWith('image/') && file.size > 0 && file.size <= MAX_SHARED_IMAGE_BYTES) {
               await db.pendingShares.add({ id: uid(), blob: file, createdAt: Date.now() });
             }
           }

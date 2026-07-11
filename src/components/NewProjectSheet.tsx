@@ -20,7 +20,6 @@ export function NewProjectSheet({
         <input
           type="text"
           value={name}
-          autoFocus
           placeholder="e.g. Laundry reno"
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && name.trim() && onCreate(name.trim(), colour)}

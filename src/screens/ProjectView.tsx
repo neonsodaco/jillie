@@ -312,7 +312,7 @@ export default function ProjectView() {
         <Sheet onClose={() => setRenaming(false)} label="Rename project">
           <h2>Rename project</h2>
           <div className="field">
-            <input type="text" value={renameText} autoFocus onChange={(e) => setRenameText(e.target.value)} />
+            <input type="text" value={renameText} onChange={(e) => setRenameText(e.target.value)} />
           </div>
           <button
             className="btn btn-primary btn-block"

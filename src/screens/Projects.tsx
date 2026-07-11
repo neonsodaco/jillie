@@ -191,7 +191,7 @@ function RenameSheet({
         <input
           type="text"
           value={name}
-          autoFocus
+         
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && name.trim() && onSave(name.trim())}
         />
