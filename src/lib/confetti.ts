@@ -5,8 +5,8 @@
  */
 
 const COLOURS = [
-  '#c4704f', '#8a9b6e', '#6b8cbe', '#d9a441', '#c98a98', '#4f9b94', '#8e6c9e',
-  '#f2c94c', '#e86f9e', '#5fbf77', '#7fc8f8'
+  '#f9a870', '#7ed9a0', '#85aff5', '#f99c94', '#f48fbe', '#6fd1c4',
+  '#c393f2', '#75d5e8', '#8fcff8', '#e794f0', '#f78fa4', '#9ba0f5', '#ffd79a'
 ];
 
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo);

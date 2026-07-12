@@ -141,7 +141,7 @@ export default function HelpScreen() {
           <input
             ref={fileRef}
             type="file"
-            accept=".zip,application/zip"
+            accept=".txt,.json,.zip,text/plain,application/json,application/zip"
             hidden
             onChange={(e) => e.target.files?.[0] && setPendingRestore(e.target.files[0])}
           />

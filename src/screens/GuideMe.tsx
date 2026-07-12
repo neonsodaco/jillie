@@ -117,7 +117,7 @@ export default function GuideMe() {
               : 'Nothing on the list fits just now.'}
           </div>
           {energy === 'low'
-            ? 'That might be your answer for today — rest is allowed. Or mark a small task as Gentle and it will show up here.'
+            ? "That might be your answer for today — rest is allowed. Or set a small task's Energy required to Minimum and it will show up here."
             : 'Add a task or two and Guide Me will sort them for you.'}
         </div>
       )}
@@ -136,7 +136,8 @@ export default function GuideMe() {
                 {task.name || 'Untitled task'}
               </span>
               <span className={`hwhy${overdue ? ' overdue' : ''}`}>
-                {project.name} · {why}
+                <strong>{project.name}</strong>
+                {why ? ` \u00b7 ${why}` : ''}
               </span>
             </button>
           ))}
@@ -157,7 +158,8 @@ export default function GuideMe() {
               <span className="body">
                 <span className="name">{task.name || 'Untitled task'}</span>
                 <span className={`why${overdue ? ' overdue' : ''}`}>
-                  {project.name} · {why}
+                  <strong>{project.name}</strong>
+                  {why ? ` \u00b7 ${why}` : ''}
                 </span>
               </span>
             </button>

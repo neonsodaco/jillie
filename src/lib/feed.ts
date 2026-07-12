@@ -81,20 +81,15 @@ export function nextStepUrgency(
   return { actionable: actionable.task, label: actionable.label, urgency: best };
 }
 
-/** The reason line for an urgency, from the actionable step's point of view. */
-export function urgencyWhy(u: Urgency, latestUpdateByTask: Map<string, Update>): { why: string; overdue: boolean } {
-  if (u.rank === 4) {
-    const latest = latestUpdateByTask.get(u.srcTask.id)!;
-    return { why: `no update in ${daysSince(latest.createdAt)} days`, overdue: false };
-  }
+/**
+ * The line under a snippet: just the due date (the group heading and
+ * ordering carry the rest — anything more was too much information).
+ * The date shown is the one driving the urgency, own or unlocked.
+ */
+export function urgencyWhy(u: Urgency, _latestUpdateByTask: Map<string, Update>): { why: string; overdue: boolean } {
   const line = u.srcTask.dueDate ? dueLine(u.srcTask.dueDate) : null;
-  const what = line ? line.text : 'high priority';
-  const overdue = line?.overdue ?? false;
-  if (u.own) return { why: what, overdue };
-  return {
-    why: `clears the way for ${u.srcLabel}. ${u.srcTask.name || 'the next step'} — ${what}`,
-    overdue
-  };
+  if (u.rank === 4 || !line) return { why: '', overdue: false };
+  return { why: line.text, overdue: line.overdue };
 }
 
 export function buildFeed(

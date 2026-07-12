@@ -45,7 +45,7 @@ export function guidePicks(
     // her energy must match the step that is actually next — no skipping ahead
     if (!allowed.includes(next.actionable.physicalDemand ?? 'medium')) continue;
 
-    let why = 'ready when you are';
+    let why = '';
     let overdue = false;
     let rank = 5;
     let due = '9999';

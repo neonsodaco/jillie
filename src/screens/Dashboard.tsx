@@ -132,7 +132,8 @@ export default function Dashboard() {
                       {task.name}
                     </span>
                     <span className={`hwhy${overdue ? ' overdue' : ''}`}>
-                      {project.name} · {why}
+                      <strong>{project.name}</strong>
+                      {why ? ` \u00b7 ${why}` : ''}
                     </span>
                   </button>
                 ) : (
@@ -145,7 +146,8 @@ export default function Dashboard() {
                     <span className="body">
                       <span className="name">{task.name}</span>
                       <span className={`why${overdue ? ' overdue' : ''}`}>
-                        {project.name} · {why}
+                        <strong>{project.name}</strong>
+                        {why ? ` · ${why}` : ''}
                       </span>
                     </span>
                   </button>

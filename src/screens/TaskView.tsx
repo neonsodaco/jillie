@@ -57,6 +57,15 @@ function TaskForm({ task }: { task: Task }) {
   const [editingNote, setEditingNote] = useState<Update | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
+
+  // the description grows to fit its text exactly — no drag handle
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [involved]);
 
   const label = useMemo(() => labelMap(active(siblings)).get(task.id) ?? '', [siblings, task.id]);
   const sortedUpdates = useMemo(() => [...updates].sort((a, b) => b.createdAt - a.createdAt), [updates]);
@@ -202,6 +211,9 @@ function TaskForm({ task }: { task: Task }) {
       <div className="field">
         <FieldLabel text="Task description" help="What this task is about — details, names, the shop, a phone number." />
         <textarea
+          ref={descRef}
+          className="autogrow"
+          rows={1}
           value={involved}
           placeholder="What's this task about? Details, names, numbers…"
           onChange={(e) => {
@@ -217,7 +229,7 @@ function TaskForm({ task }: { task: Task }) {
           {(['low', 'normal', 'high'] as Priority[]).map((p) => (
             <button
               key={p}
-              className={`prio-btn${live.priority === p ? ` sel-${p}` : ''}`}
+              className={`prio-btn grad-p-${p}${live.priority === p ? ' on' : ''}`}
               onClick={() => save({ priority: p })}
             >
               {p === 'low' ? 'Low' : p === 'normal' ? 'Normal' : 'High'}
@@ -228,17 +240,17 @@ function TaskForm({ task }: { task: Task }) {
 
       <div className="field">
         <FieldLabel
-          text="How big a job is it?"
-          help="How much physical oomph this one takes. Guide Me uses it to suggest tasks that fit your energy on the day."
+          text="Energy required"
+          help="How much physical energy this one takes. Guide Me uses it to suggest tasks that fit your energy on the day."
         />
         <div className="prio-row">
           {(['low', 'medium', 'high'] as PhysicalDemand[]).map((d) => (
             <button
               key={d}
-              className={`prio-btn${(live.physicalDemand ?? 'medium') === d ? ` sel-${d === 'medium' ? 'normal' : d === 'low' ? 'low' : 'high'}` : ''}`}
+              className={`prio-btn grad-e-${d}${(live.physicalDemand ?? 'medium') === d ? ' on' : ''}`}
               onClick={() => save({ physicalDemand: d })}
             >
-              {d === 'low' ? 'Gentle' : d === 'medium' ? 'Medium' : 'Heavy'}
+              {d === 'low' ? 'Minimum' : d === 'medium' ? 'Moderate' : 'High'}
             </button>
           ))}
         </div>

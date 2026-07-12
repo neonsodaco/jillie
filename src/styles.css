@@ -32,18 +32,20 @@
    bright oranges, blues, bright greens. No browns, yellows or mud.
    Class names are legacy ids; --c is the bloom, --c-tint the pale wash,
    --c-deep the readable dark shade (white text passes contrast on all). */
-.c-terracotta { --c: #f97316; --c-tint: #ffe8d6; --c-deep: #b83c00; } /* bright orange */
-.c-sage       { --c: #22c55e; --c-tint: #dcf7e5; --c-deep: #15803d; } /* bright green */
-.c-cornflower { --c: #3b82f6; --c-tint: #dbeafe; --c-deep: #1d4ed8; } /* blue */
-.c-marigold   { --c: #fa6a5b; --c-tint: #ffe3e0; --c-deep: #bb2610; } /* coral */
-.c-rose       { --c: #ec4899; --c-tint: #fce1f0; --c-deep: #be185d; } /* pink */
-.c-teal       { --c: #14b8a6; --c-tint: #d5f5f0; --c-deep: #0f766e; } /* teal */
-.c-plum       { --c: #a855f7; --c-tint: #f0e1fe; --c-deep: #7e22ce; } /* purple */
-.c-olive      { --c: #06b6d4; --c-tint: #d3f3fa; --c-deep: #0e7490; } /* turquoise */
-.c-slate      { --c: #38bdf8; --c-tint: #dcf2fe; --c-deep: #0369a1; } /* sky blue */
-.c-walnut     { --c: #d946ef; --c-tint: #fae2fe; --c-deep: #a21caf; } /* magenta */
-.c-berry      { --c: #f43f5e; --c-tint: #fee0e5; --c-deep: #be123c; } /* raspberry */
-.c-pine       { --c: #6366f1; --c-tint: #e3e4fd; --c-deep: #4338ca; } /* indigo */
+/* Pastel flower palette — same colour families, softened blooms.
+   --c-deep stays rich so white text on project cards remains readable. */
+.c-terracotta { --c: #f9a870; --c-tint: #feeee2; --c-deep: #c05621; } /* pastel orange */
+.c-sage       { --c: #7ed9a0; --c-tint: #e6f8ed; --c-deep: #1f7a48; } /* pastel green */
+.c-cornflower { --c: #85aff5; --c-tint: #e6eefd; --c-deep: #2b5fc7; } /* pastel blue */
+.c-marigold   { --c: #f99c94; --c-tint: #fee9e7; --c-deep: #bb3a2c; } /* pastel coral */
+.c-rose       { --c: #f48fbe; --c-tint: #fde6f1; --c-deep: #c02670; } /* pastel pink */
+.c-teal       { --c: #6fd1c4; --c-tint: #e2f6f3; --c-deep: #12766b; } /* pastel teal */
+.c-plum       { --c: #c393f2; --c-tint: #f4eafd; --c-deep: #8930dd; } /* pastel purple */
+.c-olive      { --c: #75d5e8; --c-tint: #e3f6fa; --c-deep: #0e7490; } /* pastel turquoise */
+.c-slate      { --c: #8fcff8; --c-tint: #e7f4fd; --c-deep: #0b6ba8; } /* pastel sky blue */
+.c-walnut     { --c: #e794f0; --c-tint: #fbe9fd; --c-deep: #a21caf; } /* pastel magenta */
+.c-berry      { --c: #f78fa4; --c-tint: #fee7ec; --c-deep: #be123c; } /* pastel raspberry */
+.c-pine       { --c: #9ba0f5; --c-tint: #eaebfd; --c-deep: #4741d8; } /* pastel indigo */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
@@ -284,7 +286,8 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--radius-sm); padding: 0.75rem 0.875rem; min-height: 2.875rem;
 }
 .field input:focus, .field textarea:focus { outline: none; border-color: var(--c, var(--accent)); }
-.field textarea { resize: vertical; min-height: 4.5rem; }
+.field textarea { resize: none; min-height: 4.5rem; }
+.field textarea.autogrow { min-height: 2.875rem; overflow: hidden; }
 
 .helpdot {
   width: 1.25rem; height: 1.25rem; border-radius: 50%; flex: none;
@@ -298,15 +301,19 @@ a { color: inherit; text-decoration: none; }
 }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 
-/* priority buttons */
+/* priority + energy buttons: soft gradient tiles, never plain white */
 .prio-row { display: flex; gap: 0.5rem; }
 .prio-btn {
   flex: 1; border-radius: var(--radius-sm); padding: 0.75rem 0.25rem; font-weight: 800;
-  background: var(--card); border: 1.5px solid var(--line); color: var(--ink-soft);
+  border: 2px solid transparent; opacity: 0.75;
 }
-.prio-btn.sel-low { background: #eef0ea; border-color: #b9c2ae; color: #55663c; }
-.prio-btn.sel-normal { background: #ece9e3; border-color: #b7ac9e; color: var(--ink); }
-.prio-btn.sel-high { background: var(--c-tint, #f7e6dd); border-color: var(--c, var(--accent)); color: var(--c-deep, var(--accent-deep)); }
+.grad-p-low    { background: linear-gradient(140deg, #e9f8ef, #cdeeda); color: #1f7a48; }
+.grad-p-normal { background: linear-gradient(140deg, #edf3fc, #d6e5fa); color: #2b5fc7; }
+.grad-p-high   { background: linear-gradient(140deg, #fdecf3, #f8d3e5); color: #c02670; }
+.grad-e-low    { background: linear-gradient(140deg, #e4f7f3, #c9ede5); color: #12766b; }
+.grad-e-medium { background: linear-gradient(140deg, #e7f3fc, #cfe7f9); color: #0b6ba8; }
+.grad-e-high   { background: linear-gradient(140deg, #f7ecfd, #e9d3f9); color: #8930dd; }
+.prio-btn.on { border-color: currentColor; opacity: 1; box-shadow: var(--shadow); }
 
 /* colour picker — a tidy 6 x 2 grid of compact circles, no gaps */
 .swatch-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.625rem; justify-items: center; }
@@ -509,9 +516,9 @@ a { color: inherit; text-decoration: none; }
   width: 2.75rem; height: 2.75rem; border-radius: 50%; flex: none;
   display: inline-flex; align-items: center; justify-content: center; color: #fff;
 }
-.energy-low .ebadge { background: #14b8a6; }
-.energy-medium .ebadge { background: #38bdf8; }
-.energy-high .ebadge { background: #ec4899; }
+.energy-low .ebadge { background: #12766b; }
+.energy-medium .ebadge { background: #0b6ba8; }
+.energy-high .ebadge { background: #c02670; }
 .energy-card .ebody { flex: 1; min-width: 0; }
 .energy-card .etitle { display: block; font-weight: 800; font-size: 1rem; }
 .energy-card .eblurb { display: block; font-size: 0.8125rem; color: var(--ink-soft); }
