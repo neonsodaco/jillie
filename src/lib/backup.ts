@@ -45,7 +45,11 @@ const blobToDataURL = (blob: Blob) =>
 
 function dataURLToBlob(dataURL: string): Blob {
   const [head, b64] = dataURL.split(',');
-  const type = head.match(/data:([^;]+)/)?.[1] ?? 'image/webp';
+  if (!b64) throw new Error('Bad photo data');
+  const declared = head.match(/data:([^;]+)/)?.[1] ?? 'image/webp';
+  // photos are the only thing a backup may carry — a doctored file can't
+  // smuggle any other content type into the database
+  const type = declared.startsWith('image/') ? declared : 'image/webp';
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -119,15 +123,20 @@ async function restoreZip(bytes: Uint8Array): Promise<{ projects: number; tasks:
   for (const meta of data.photos) {
     const raw = entries[meta.file];
     if (!raw) continue;
-    const blob = new Blob([raw as BlobPart], { type: meta.type || 'image/webp' });
-    photos.push({
-      id: meta.id ?? uid(),
-      taskId: meta.taskId,
-      caption: meta.caption ?? '',
-      blob,
-      thumb: await makeThumb(blob),
-      createdAt: meta.createdAt ?? Date.now()
-    });
+    const type = meta.type?.startsWith('image/') ? meta.type : 'image/webp';
+    const blob = new Blob([raw as BlobPart], { type });
+    try {
+      photos.push({
+        id: meta.id ?? uid(),
+        taskId: meta.taskId,
+        caption: meta.caption ?? '',
+        blob,
+        thumb: await makeThumb(blob),
+        createdAt: meta.createdAt ?? Date.now()
+      });
+    } catch {
+      // one unreadable photo shouldn't cost her the whole restore
+    }
   }
   await writeRestored(data.projects, data.tasks, data.updates, data.shopItems ?? [], photos);
   return { projects: data.projects.length, tasks: data.tasks.length, photos: photos.length };
@@ -148,15 +157,19 @@ export async function restoreBackup(file: Blob): Promise<{ projects: number; tas
 
   const photos: Photo[] = [];
   for (const meta of data.photos ?? []) {
-    const blob = dataURLToBlob(meta.data);
-    photos.push({
-      id: meta.id ?? uid(),
-      taskId: meta.taskId,
-      caption: meta.caption ?? '',
-      blob,
-      thumb: await makeThumb(blob),
-      createdAt: meta.createdAt ?? Date.now()
-    });
+    try {
+      const blob = dataURLToBlob(meta.data);
+      photos.push({
+        id: meta.id ?? uid(),
+        taskId: meta.taskId,
+        caption: meta.caption ?? '',
+        blob,
+        thumb: await makeThumb(blob),
+        createdAt: meta.createdAt ?? Date.now()
+      });
+    } catch {
+      // one unreadable photo shouldn't cost her the whole restore
+    }
   }
   await writeRestored(data.projects, data.tasks, data.updates, data.shopItems ?? [], photos);
   return { projects: data.projects.length, tasks: data.tasks.length, photos: photos.length };

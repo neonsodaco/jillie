@@ -17,8 +17,20 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// Jillie must never run inside another site's page — that's the setup for
+// click-hijacking. GitHub Pages can't send frame-blocking headers, so the
+// app enforces it itself: break out of the frame, or refuse to render.
+const framed = window.top !== window.self;
+if (framed) {
+  try {
+    window.top!.location.replace(window.location.href);
+  } catch {
+    /* sandboxed frame: stay blank */
+  }
+} else {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
