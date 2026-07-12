@@ -39,9 +39,10 @@ export default function ProjectView() {
   const { done, total } = progress(tasks);
   const allDone = total > 0 && done === total;
 
-  // the two freshest notes across every task in this project
+  // the two freshest notes across this project's OPEN tasks
+  // (finished tasks' notes are history, not news)
   const latestNotes = useMemo(() => {
-    const byId = new Map(tasks.map((t) => [t.id, t]));
+    const byId = new Map(tasks.filter((t) => !t.done).map((t) => [t.id, t]));
     return allUpdates
       .filter((u) => byId.has(u.taskId))
       .sort((a, b) => b.createdAt - a.createdAt)

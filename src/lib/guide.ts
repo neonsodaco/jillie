@@ -1,10 +1,12 @@
-import type { Project, Task, PhysicalDemand } from '../db';
-import { daysUntil, dueLine } from './dates';
+import type { Project, Task, Update, PhysicalDemand } from '../db';
+import { nextStepUrgency, urgencyWhy } from './feed';
 
 /**
- * Guide Me: match today's energy to tasks whose physical demand fits,
- * then surface the most important of those — so a low day still ends
- * with something done, without pushing past her limits.
+ * Guide Me, dependency-aware. Steps run strictly in order, so each
+ * project offers exactly one candidate: its next unticked step. If that
+ * step is too heavy for today's energy, the project offers nothing —
+ * Guide Me never skips ahead past a blocking step. Urgency (own or
+ * inherited from what the step unlocks) decides the order.
  */
 
 export type Energy = 'low' | 'medium' | 'high';
@@ -24,47 +26,50 @@ export interface GuidePick {
 
 const prioRank = { high: 0, normal: 1, low: 2 } as const;
 
-function urgency(t: Task): number {
-  if (t.dueDate) {
-    const d = daysUntil(t.dueDate);
-    if (d < 0) return 0; // overdue
-    if (d === 0) return 1; // due today
-    if (d <= 3 && t.priority !== 'high') return 3; // due soon
-  }
-  if (t.priority === 'high') return 2;
-  return 4;
-}
-
-function whyLine(t: Task): { why: string; overdue: boolean } {
-  if (t.dueDate) {
-    const line = dueLine(t.dueDate);
-    if (line.overdue || line.dueToday || daysUntil(t.dueDate) <= 3) return { why: line.text, overdue: line.overdue };
-  }
-  if (t.priority === 'high') return { why: 'high priority', overdue: false };
-  return { why: 'ready when you are', overdue: false };
-}
-
 export function guidePicks(
   tasks: Task[],
   projectsById: Map<string, Project>,
-  energy: Energy
+  energy: Energy,
+  latestUpdateByTask: Map<string, Update> = new Map()
 ): GuidePick[] {
   const allowed = ALLOWED[energy];
-  return tasks
-    .filter((t) => {
-      if (t.done || t.archivedAt !== null || t.deletedAt !== null) return false;
-      if (!allowed.includes(t.physicalDemand ?? 'medium')) return false;
-      const p = projectsById.get(t.projectId);
-      return !!p && p.archivedAt === null && p.deletedAt === null;
-    })
-    .sort(
-      (a, b) =>
-        urgency(a) - urgency(b) ||
-        (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') ||
-        prioRank[a.priority] - prioRank[b.priority] ||
-        a.createdAt - b.createdAt
-    )
-    .map((t) => ({ task: t, project: projectsById.get(t.projectId)!, ...whyLine(t) }));
+  const out: { pick: GuidePick; rank: number; due: string; prio: number; created: number }[] = [];
+
+  for (const project of projectsById.values()) {
+    if (project.archivedAt !== null || project.deletedAt !== null) continue;
+    const projTasks = tasks.filter(
+      (t) => t.projectId === project.id && t.deletedAt === null && t.archivedAt === null
+    );
+    const next = nextStepUrgency(projTasks, latestUpdateByTask);
+    if (!next) continue;
+    // her energy must match the step that is actually next — no skipping ahead
+    if (!allowed.includes(next.actionable.physicalDemand ?? 'medium')) continue;
+
+    let why = 'ready when you are';
+    let overdue = false;
+    let rank = 5;
+    let due = '9999';
+    let prio = prioRank[next.actionable.priority];
+    if (next.urgency && next.urgency.rank < 4) {
+      const w = urgencyWhy(next.urgency, latestUpdateByTask);
+      why = w.why;
+      overdue = w.overdue;
+      rank = next.urgency.rank;
+      due = next.urgency.srcTask.dueDate ?? '9999';
+      prio = prioRank[next.urgency.srcTask.priority];
+    }
+    out.push({
+      pick: { task: next.actionable, project, why, overdue },
+      rank,
+      due,
+      prio,
+      created: next.actionable.createdAt
+    });
+  }
+
+  return out
+    .sort((a, b) => a.rank - b.rank || a.due.localeCompare(b.due) || a.prio - b.prio || a.created - b.created)
+    .map((o) => o.pick);
 }
 
 /* ---- today's energy answer, remembered for the day ---- */

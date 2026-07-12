@@ -20,7 +20,9 @@ export default function Projects() {
   const [recolouring, setRecolouring] = useState<Project | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Project | null>(null);
 
-  const activeProjects = active(projects).sort((a, b) => a.createdAt - b.createdAt);
+  const activeProjects = active(projects).sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  );
 
   const stats = useMemo(() => {
     const m = new Map<string, { done: number; total: number; next: string | null }>();

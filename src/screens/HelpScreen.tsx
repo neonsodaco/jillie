@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildBackup, shareBackup, recordBackupDone, restoreBackup } from '../lib/backup';
+import { restoreBackup } from '../lib/backup';
 import { IconBack } from '../components/icons';
 import { ConfirmSheet } from '../components/ui';
+import { BackupSheet } from '../components/BackupSheet';
 import { useUndo } from '../lib/undo';
 
 /** One friendly page. No tech words. Everything she might forget, findable. */
@@ -11,21 +12,8 @@ export default function HelpScreen() {
   const { toast } = useUndo();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pendingRestore, setPendingRestore] = useState<File | null>(null);
+  const [backupOpen, setBackupOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  async function saveBackup() {
-    try {
-      setBusy(true);
-      const file = await buildBackup();
-      const how = await shareBackup(file);
-      recordBackupDone();
-      toast(how === 'shared' ? 'Backup shared — pick Save to Drive.' : 'Backup saved to your downloads.');
-    } catch (err) {
-      if ((err as DOMException)?.name !== 'AbortError') toast('That backup did not save — try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function doRestore() {
     const file = pendingRestore!;
@@ -140,10 +128,11 @@ export default function HelpScreen() {
         <h2>Backups — your safety net</h2>
         <p>
           Everything lives on your phone. A backup puts a copy in your Google Drive, so a lost or broken phone
-          can't take your projects with it. Two taps: Save a backup, then Save to Drive. Once a month is plenty.
+          can't take your projects with it. Tap Save a backup, give it a moment to pack, then tap
+          <strong> Send to Google Drive</strong> and pick Save to Drive. Once a month is plenty.
         </p>
         <div className="card" style={{ padding: '0.875rem 1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" disabled={busy} onClick={saveBackup}>
+          <button className="btn btn-primary" disabled={busy} onClick={() => setBackupOpen(true)}>
             Save a backup
           </button>
           <button className="btn btn-tint" disabled={busy} onClick={() => fileRef.current?.click()}>
@@ -158,6 +147,8 @@ export default function HelpScreen() {
           />
         </div>
       </div>
+
+      {backupOpen && <BackupSheet onClose={() => setBackupOpen(false)} />}
 
       {pendingRestore && (
         <ConfirmSheet

@@ -5,10 +5,11 @@ import { db, uid, active, type Project, type Update } from '../db';
 import { NewProjectSheet } from '../components/NewProjectSheet';
 import { IconPlus } from '../components/icons';
 import { greeting, todayWords } from '../lib/dates';
-import { labelMap, progress } from '../lib/numbering';
+import { progress } from '../lib/numbering';
 import { buildFeed } from '../lib/feed';
 import { recentWins, winsLine } from '../lib/encourage';
-import { buildBackup, shareBackup, recordBackupDone, shouldNudgeBackup, snoozeBackupNudge } from '../lib/backup';
+import { shouldNudgeBackup, snoozeBackupNudge } from '../lib/backup';
+import { BackupSheet } from '../components/BackupSheet';
 import { ProgressBar, Sheet, SheetItem, colourClass } from '../components/ui';
 import { IconHelp, IconDots, IconArchive, IconShare, IconList } from '../components/icons';
 import { useUndo } from '../lib/undo';
@@ -27,17 +28,11 @@ export default function Dashboard() {
   const tasks = useLiveQuery(() => db.tasks.toArray(), []) ?? [];
   const updates = useLiveQuery(() => db.updates.toArray(), []) ?? [];
 
-  const activeProjects = active(projects);
+  const activeProjects = useMemo(
+    () => active(projects).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
+    [projects]
+  );
   const projectsById = useMemo(() => new Map<string, Project>(projects.map((p) => [p.id, p])), [projects]);
-
-  const labels = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const p of activeProjects) {
-      const pt = active(tasks).filter((t) => t.projectId === p.id);
-      for (const [id, label] of labelMap(pt)) m.set(id, label);
-    }
-    return m;
-  }, [activeProjects, tasks]);
 
   const latestUpdate = useMemo(() => {
     const m = new Map<string, Update>();
@@ -49,8 +44,8 @@ export default function Dashboard() {
   }, [updates]);
 
   const feed = useMemo(
-    () => buildFeed(tasks, projectsById, labels, latestUpdate),
-    [tasks, projectsById, labels, latestUpdate]
+    () => buildFeed(tasks, projectsById, latestUpdate),
+    [tasks, projectsById, latestUpdate]
   );
 
   // one flat list in urgency order: up to 8 shown, the top two highlighted
@@ -61,19 +56,13 @@ export default function Dashboard() {
   const visibleFeed = feedExpanded ? flatFeed : flatFeed.slice(0, 8);
   const hiddenCount = flatFeed.length - visibleFeed.length;
 
+  const [backupOpen, setBackupOpen] = useState(false);
   const showNudge = !nudgeHidden && shouldNudgeBackup(activeProjects.length > 0);
 
-  async function saveBackup() {
+  function saveBackup() {
     setMenuOpen(false);
-    try {
-      const file = await buildBackup();
-      const how = await shareBackup(file);
-      recordBackupDone();
-      setNudgeHidden(true);
-      toast(how === 'shared' ? 'Backup shared — pick Save to Drive.' : 'Backup saved to your downloads.');
-    } catch (err) {
-      if ((err as DOMException)?.name !== 'AbortError') toast('That backup did not save — try again.');
-    }
+    setNudgeHidden(true);
+    setBackupOpen(true);
   }
 
   return (
@@ -218,6 +207,8 @@ export default function Dashboard() {
           </button>
         </div>
       )}
+
+      {backupOpen && <BackupSheet onClose={() => setBackupOpen(false)} />}
 
       {menuOpen && (
         <Sheet onClose={() => setMenuOpen(false)} label="More options">

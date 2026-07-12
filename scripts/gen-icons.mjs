@@ -121,7 +121,7 @@ function drawIcon(size, { maskable }) {
   return encodePNG(size, size, rgba);
 }
 
-writeFileSync(join(outDir, 'icon-192.png'), drawIcon(192, { maskable: false }));
-writeFileSync(join(outDir, 'icon-512.png'), drawIcon(512, { maskable: false }));
-writeFileSync(join(outDir, 'maskable-512.png'), drawIcon(512, { maskable: true }));
+writeFileSync(join(outDir, 'icon-192-v2.png'), drawIcon(192, { maskable: false }));
+writeFileSync(join(outDir, 'icon-512-v2.png'), drawIcon(512, { maskable: false }));
+writeFileSync(join(outDir, 'maskable-512-v2.png'), drawIcon(512, { maskable: true }));
 console.log('Icons written to', outDir);

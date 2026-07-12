@@ -20,6 +20,10 @@ const WELCOME_KEY = 'welcome.done';
 function Shell() {
   const location = useLocation();
   const hideNav = location.pathname.startsWith('/share');
+  // every page opens at the top — never wherever the last one was scrolled to
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
   return (
     <div className="app">
       <Routes>

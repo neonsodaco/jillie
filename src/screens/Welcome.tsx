@@ -20,7 +20,7 @@ export default function Welcome({ onDone }: { onDone: () => void }) {
   const last = i === SLIDES.length - 1;
   return (
     <div className="welcome">
-      <img src="./icons/icon-192.png" alt="" className="welcome-icon" />
+      <img src="./icons/icon-192-v2.png" alt="" className="welcome-icon" />
       <h1>{SLIDES[i].title}</h1>
       <p>{SLIDES[i].body}</p>
       <div className="dots" aria-hidden>

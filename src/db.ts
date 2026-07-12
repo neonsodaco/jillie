@@ -5,19 +5,21 @@ export type ColourKey =
   | 'rose' | 'teal' | 'plum' | 'olive'
   | 'slate' | 'walnut' | 'berry' | 'pine';
 
+// Bright flower palette. The keys are legacy ids kept stable so existing
+// projects and backups keep working — the labels and CSS carry the colours.
 export const COLOURS: { key: ColourKey; label: string }[] = [
-  { key: 'terracotta', label: 'Terracotta' },
-  { key: 'sage', label: 'Sage' },
-  { key: 'cornflower', label: 'Cornflower' },
-  { key: 'marigold', label: 'Marigold' },
-  { key: 'rose', label: 'Dusty rose' },
+  { key: 'terracotta', label: 'Bright orange' },
+  { key: 'sage', label: 'Bright green' },
+  { key: 'cornflower', label: 'Blue' },
+  { key: 'marigold', label: 'Coral' },
+  { key: 'rose', label: 'Pink' },
   { key: 'teal', label: 'Teal' },
-  { key: 'plum', label: 'Plum' },
-  { key: 'olive', label: 'Olive' },
-  { key: 'slate', label: 'Slate' },
-  { key: 'walnut', label: 'Walnut' },
-  { key: 'berry', label: 'Berry' },
-  { key: 'pine', label: 'Pine' }
+  { key: 'plum', label: 'Purple' },
+  { key: 'olive', label: 'Turquoise' },
+  { key: 'slate', label: 'Sky blue' },
+  { key: 'walnut', label: 'Magenta' },
+  { key: 'berry', label: 'Raspberry' },
+  { key: 'pine', label: 'Indigo' }
 ];
 
 export type Priority = 'low' | 'normal' | 'high';

@@ -186,10 +186,6 @@ function TaskForm({ task }: { task: Task }) {
         </button>
       </header>
 
-      <button className={`btn-done${live.done ? '' : ' undone'}`} onClick={toggleDone} style={{ marginBottom: '1.25rem' }}>
-        <IconTick size={18} /> {live.done ? 'Done — tap to reopen' : 'Mark as done'}
-      </button>
-
       <div className="field">
         <FieldLabel text="Task name" help="What needs doing, in your own words." />
         <input
@@ -383,6 +379,18 @@ function TaskForm({ task }: { task: Task }) {
           <ShopItemEditSheet item={shopItems.find((s) => s.id === editingItem)!} onClose={() => setEditingItem(null)} />
         )}
       </div>
+
+      <button
+        className="btn btn-primary btn-block"
+        style={{ marginTop: '0.5rem' }}
+        onClick={() => undo.toast('All saved, Jillian.')}
+      >
+        Save task
+      </button>
+
+      <button className={`btn-done${live.done ? '' : ' undone'}`} onClick={toggleDone} style={{ marginTop: '0.75rem' }}>
+        <IconTick size={18} /> {live.done ? 'Done — tap to reopen' : 'Mark as done'}
+      </button>
 
       {menuOpen && (
         <Sheet onClose={() => setMenuOpen(false)} label="Task options">

@@ -28,18 +28,22 @@
 }
 
 /* the eight project colours: solid, tint (background), deep (text on tint) */
-.c-terracotta { --c: #c4704f; --c-tint: #f7e6dd; --c-deep: #8f4a2e; }
-.c-sage       { --c: #8a9b6e; --c-tint: #eaeedf; --c-deep: #55663c; }
-.c-cornflower { --c: #6b8cbe; --c-tint: #e3eaf5; --c-deep: #3f5d8d; }
-.c-marigold   { --c: #d9a441; --c-tint: #f8ecd2; --c-deep: #8a6410; }
-.c-rose       { --c: #c98a98; --c-tint: #f6e5e9; --c-deep: #8d5262; }
-.c-teal       { --c: #4f9b94; --c-tint: #ddedeb; --c-deep: #2c6660; }
-.c-plum       { --c: #8e6c9e; --c-tint: #ebe3f0; --c-deep: #5f4472; }
-.c-olive      { --c: #8b8653; --c-tint: #ebe9d8; --c-deep: #57532c; }
-.c-slate      { --c: #6b7f93; --c-tint: #e4e9ee; --c-deep: #41576b; }
-.c-walnut     { --c: #8a6f4b; --c-tint: #efe7db; --c-deep: #5b4426; }
-.c-berry      { --c: #a04e62; --c-tint: #f2e0e5; --c-deep: #74303f; }
-.c-pine       { --c: #4e7d53; --c-tint: #dfebe1; --c-deep: #2e5233; }
+/* Bright flower palette — pinks, purples, teals, magentas, turquoise,
+   bright oranges, blues, bright greens. No browns, yellows or mud.
+   Class names are legacy ids; --c is the bloom, --c-tint the pale wash,
+   --c-deep the readable dark shade (white text passes contrast on all). */
+.c-terracotta { --c: #f97316; --c-tint: #ffe8d6; --c-deep: #b83c00; } /* bright orange */
+.c-sage       { --c: #22c55e; --c-tint: #dcf7e5; --c-deep: #15803d; } /* bright green */
+.c-cornflower { --c: #3b82f6; --c-tint: #dbeafe; --c-deep: #1d4ed8; } /* blue */
+.c-marigold   { --c: #fa6a5b; --c-tint: #ffe3e0; --c-deep: #bb2610; } /* coral */
+.c-rose       { --c: #ec4899; --c-tint: #fce1f0; --c-deep: #be185d; } /* pink */
+.c-teal       { --c: #14b8a6; --c-tint: #d5f5f0; --c-deep: #0f766e; } /* teal */
+.c-plum       { --c: #a855f7; --c-tint: #f0e1fe; --c-deep: #7e22ce; } /* purple */
+.c-olive      { --c: #06b6d4; --c-tint: #d3f3fa; --c-deep: #0e7490; } /* turquoise */
+.c-slate      { --c: #38bdf8; --c-tint: #dcf2fe; --c-deep: #0369a1; } /* sky blue */
+.c-walnut     { --c: #d946ef; --c-tint: #fae2fe; --c-deep: #a21caf; } /* magenta */
+.c-berry      { --c: #f43f5e; --c-tint: #fee0e5; --c-deep: #be123c; } /* raspberry */
+.c-pine       { --c: #6366f1; --c-tint: #e3e4fd; --c-deep: #4338ca; } /* indigo */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
@@ -505,9 +509,9 @@ a { color: inherit; text-decoration: none; }
   width: 2.75rem; height: 2.75rem; border-radius: 50%; flex: none;
   display: inline-flex; align-items: center; justify-content: center; color: #fff;
 }
-.energy-low .ebadge { background: #8a9b6e; }
-.energy-medium .ebadge { background: #d9a441; }
-.energy-high .ebadge { background: #c4704f; }
+.energy-low .ebadge { background: #14b8a6; }
+.energy-medium .ebadge { background: #38bdf8; }
+.energy-high .ebadge { background: #ec4899; }
 .energy-card .ebody { flex: 1; min-width: 0; }
 .energy-card .etitle { display: block; font-weight: 800; font-size: 1rem; }
 .energy-card .eblurb { display: block; font-size: 0.8125rem; color: var(--ink-soft); }

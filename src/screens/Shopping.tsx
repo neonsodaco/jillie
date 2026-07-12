@@ -23,7 +23,9 @@ export default function Shopping() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ShopItem | null>(null);
 
-  const activeProjects = active(projects).sort((a, b) => a.createdAt - b.createdAt);
+  const activeProjects = active(projects).sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  );
   const projectsById = useMemo(() => new Map(activeProjects.map((p) => [p.id, p])), [activeProjects]);
 
   // items can only be added for projects that still have something to do
