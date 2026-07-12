@@ -11,6 +11,9 @@
 }
 
 :root {
+  /* designed-light app: never let the browser auto-darken or use dark
+     form controls, whatever the phone's theme is set to */
+  color-scheme: only light;
   --bg: #faf7f2;
   --card: #fffdf9;
   --ink: #2e2a26;

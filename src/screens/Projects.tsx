@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, uid, active, hardDeleteProject, type Project } from '../db';
+import { db, uid, active, hardDeleteProject, snapshotProject, restoreProjectSnapshot, type Project } from '../db';
 import { nextTask, progress } from '../lib/numbering';
 import { ProgressBar, progressWords, Sheet, SheetItem, ConfirmSheet, ColourPicker, colourClass } from '../components/ui';
 import { NewProjectSheet } from '../components/NewProjectSheet';
@@ -57,12 +57,16 @@ export default function Projects() {
   function deleteProject(p: Project) {
     setConfirmDelete(null);
     setMenuFor(null);
-    void db.projects.update(p.id, { deletedAt: Date.now() });
-    undo.run({
-      message: `${p.name} deleted.`,
-      revert: () => db.projects.update(p.id, { deletedAt: null }).then(() => undefined),
-      commit: () => hardDeleteProject(p.id)
-    });
+    // delete NOW (a refresh can never bring it back); Undo restores the snapshot
+    void (async () => {
+      const snap = await snapshotProject(p.id);
+      await hardDeleteProject(p.id);
+      undo.run({
+        message: `${p.name} deleted.`,
+        revert: () => restoreProjectSnapshot(snap),
+        commit: () => undefined
+      });
+    })();
   }
 
   const card = (p: Project) => {

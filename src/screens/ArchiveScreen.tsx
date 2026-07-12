@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, hardDeleteProject, type Project } from '../db';
+import { db, hardDeleteProject, snapshotProject, restoreProjectSnapshot, type Project } from '../db';
 import { stampWords } from '../lib/dates';
 import { ConfirmSheet, colourClass } from '../components/ui';
 import { IconBack, IconTrash } from '../components/icons';
@@ -31,12 +31,15 @@ export default function ArchiveScreen() {
   function killForever() {
     const p = confirmKill!;
     setConfirmKill(null);
-    void db.projects.update(p.id, { deletedAt: Date.now() });
-    undo.run({
-      message: `${p.name} deleted.`,
-      revert: () => db.projects.update(p.id, { deletedAt: null }).then(() => undefined),
-      commit: () => hardDeleteProject(p.id)
-    });
+    void (async () => {
+      const snap = await snapshotProject(p.id);
+      await hardDeleteProject(p.id);
+      undo.run({
+        message: `${p.name} deleted.`,
+        revert: () => restoreProjectSnapshot(snap),
+        commit: () => undefined
+      });
+    })();
   }
 
   return (

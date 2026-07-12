@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, uid, active, hardDeleteTasks, taskFamilyIds, type Task, type Photo, type Priority, type PhysicalDemand, type StoreType, type Update } from '../db';
+import { db, uid, active, hardDeleteTasks, taskFamilyIds, snapshotTasks, restoreTaskSnapshot, type Task, type Photo, type Priority, type PhysicalDemand, type StoreType, type Update } from '../db';
 import { labelMap } from '../lib/numbering';
 import { stampWords } from '../lib/dates';
 import { tickMessage } from '../lib/encourage';
@@ -161,11 +161,12 @@ function TaskForm({ task }: { task: Task }) {
     setMenuOpen(false);
     void (async () => {
       const ids = await taskFamilyIds(task.id);
-      await db.tasks.where('id').anyOf(ids).modify({ deletedAt: Date.now() });
+      const snap = await snapshotTasks(ids);
+      await hardDeleteTasks(ids);
       undo.run({
         message: `${live.name || 'Task'} deleted.`,
-        revert: () => db.tasks.where('id').anyOf(ids).modify({ deletedAt: null }).then(() => undefined),
-        commit: () => hardDeleteTasks(ids)
+        revert: () => restoreTaskSnapshot(snap),
+        commit: () => undefined
       });
       navigate(-1);
     })();

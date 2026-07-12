@@ -196,6 +196,68 @@ export async function taskFamilyIds(taskId: string): Promise<string[]> {
   return [taskId, ...kids.map((k) => k.id)];
 }
 
+/* ---- durable delete with in-memory undo ---------------------------------
+   Deletes happen IMMEDIATELY (so a refresh can never resurrect anything);
+   Undo restores from a snapshot held in memory for the 10-second window. */
+
+export interface ProjectSnapshot {
+  project: Project;
+  tasks: Task[];
+  updates: Update[];
+  photos: Photo[];
+  shopItems: ShopItem[];
+}
+
+export async function snapshotProject(projectId: string): Promise<ProjectSnapshot> {
+  const project = (await db.projects.get(projectId))!;
+  const tasks = await db.tasks.where('projectId').equals(projectId).toArray();
+  const taskIds = tasks.map((t) => t.id);
+  const [updates, photos, shopItems] = await Promise.all([
+    db.updates.where('taskId').anyOf(taskIds).toArray(),
+    db.photos.where('taskId').anyOf(taskIds).toArray(),
+    db.shopItems.where('projectId').equals(projectId).toArray()
+  ]);
+  return { project, tasks, updates, photos, shopItems };
+}
+
+export async function restoreProjectSnapshot(s: ProjectSnapshot): Promise<void> {
+  await db.transaction('rw', db.projects, db.tasks, db.updates, db.photos, db.shopItems, async () => {
+    await db.projects.put(s.project);
+    await db.tasks.bulkPut(s.tasks);
+    await db.updates.bulkPut(s.updates);
+    await db.photos.bulkPut(s.photos);
+    await db.shopItems.bulkPut(s.shopItems);
+  });
+}
+
+export interface TaskSnapshot {
+  tasks: Task[];
+  updates: Update[];
+  photos: Photo[];
+  shopLinks: { itemId: string; taskId: string }[]; // items survive; only the link is cut
+}
+
+export async function snapshotTasks(taskIds: string[]): Promise<TaskSnapshot> {
+  const [tasks, updates, photos, linkedItems] = await Promise.all([
+    db.tasks.where('id').anyOf(taskIds).toArray(),
+    db.updates.where('taskId').anyOf(taskIds).toArray(),
+    db.photos.where('taskId').anyOf(taskIds).toArray(),
+    db.shopItems.where('taskId').anyOf(taskIds).toArray()
+  ]);
+  return { tasks, updates, photos, shopLinks: linkedItems.map((i) => ({ itemId: i.id, taskId: i.taskId! })) };
+}
+
+export async function restoreTaskSnapshot(s: TaskSnapshot): Promise<void> {
+  await db.transaction('rw', db.tasks, db.updates, db.photos, db.shopItems, async () => {
+    await db.tasks.bulkPut(s.tasks);
+    await db.updates.bulkPut(s.updates);
+    await db.photos.bulkPut(s.photos);
+    for (const link of s.shopLinks) {
+      await db.shopItems.update(link.itemId, { taskId: link.taskId });
+    }
+  });
+}
+
 /** On boot: clear out anything left soft-deleted by a previous session. */
 export async function purgeLeftovers(): Promise<void> {
   const deadTasks = await db.tasks.filter((t) => t.deletedAt !== null).toArray();

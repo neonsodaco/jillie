@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, uid, active, hardDeleteProject, hardDeleteTasks, taskFamilyIds, type Task } from '../db';
+import { db, uid, active, hardDeleteProject, hardDeleteTasks, taskFamilyIds, snapshotProject, restoreProjectSnapshot, snapshotTasks, restoreTaskSnapshot, type Task } from '../db';
 import { numberTasks, appendOrder, orderAt, progress, type NumberedTask } from '../lib/numbering';
 import { dueLine, stampWords } from '../lib/dates';
 import { tickMessage } from '../lib/encourage';
@@ -185,11 +185,12 @@ export default function ProjectView() {
     setTaskMenu(null);
     void (async () => {
       const ids = await taskFamilyIds(n.task.id);
-      await db.tasks.where('id').anyOf(ids).modify({ deletedAt: Date.now() });
+      const snap = await snapshotTasks(ids);
+      await hardDeleteTasks(ids);
       undo.run({
         message: `${n.task.name || 'Task'} deleted.`,
-        revert: () => db.tasks.where('id').anyOf(ids).modify({ deletedAt: null }).then(() => undefined),
-        commit: () => hardDeleteTasks(ids)
+        revert: () => restoreTaskSnapshot(snap),
+        commit: () => undefined
       });
     })();
   }
@@ -209,13 +210,16 @@ export default function ProjectView() {
     setConfirmProjectDelete(false);
     setMenuOpen(false);
     const p = project!;
-    void db.projects.update(p.id, { deletedAt: Date.now() });
-    undo.run({
-      message: `${p.name} deleted.`,
-      revert: () => db.projects.update(p.id, { deletedAt: null }).then(() => undefined),
-      commit: () => hardDeleteProject(p.id)
-    });
-    navigate('/projects');
+    void (async () => {
+      const snap = await snapshotProject(p.id);
+      await hardDeleteProject(p.id);
+      undo.run({
+        message: `${p.name} deleted.`,
+        revert: () => restoreProjectSnapshot(snap),
+        commit: () => undefined
+      });
+      navigate('/projects');
+    })();
   }
 
   return (
