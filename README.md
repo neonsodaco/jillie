@@ -4,6 +4,10 @@ A local-first installable web app (PWA) for tracking DIY projects — built per
 `../diy-project-tracker-spec-v2.md`. All data lives on the phone in IndexedDB;
 no accounts, no server, no runtime third-party calls.
 
+> **Proprietary — all rights reserved.** This is not open-source software. The
+> source is source-available for viewing only; no right to use, copy, modify, or
+> distribute it is granted. See [LICENSE](./LICENSE).
+
 ## Run it locally
 
 ```bash
@@ -54,3 +58,17 @@ plain browser tab — that's an Android platform rule.
   milestone-based ("Halfway through Laundry reno"), never streaks or pressure
 - Guide Me respects low-energy days: gentle tasks only, and rest is framed as
   a legitimate answer, never a failure
+
+## Licence & ownership
+
+Copyright (c) 2026 Andrea Lee Matthies. All rights reserved. This software is
+proprietary — see [LICENSE](./LICENSE). It is source-available (you may read it)
+but not open source: no permission is granted to use, copy, modify, or
+distribute it without written consent.
+
+A note on what this does and doesn't do: a proprietary licence establishes
+ownership and legal recourse, but it does not technically prevent copying — a
+PWA still ships its compiled code to every device it runs on. Genuine
+commercial protection comes from the product, the brand, and any server-side
+logic behind an account, not from the licence alone. For a real commercial
+launch, have the terms reviewed by a qualified lawyer.
