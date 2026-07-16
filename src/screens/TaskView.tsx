@@ -10,7 +10,7 @@ import { Linkify } from '../components/Linkify';
 import { ShopItemEditSheet } from '../components/ShopItemSheet';
 import { StorePicker } from '../components/StorePicker';
 import { compressPhoto, storageTight } from '../lib/images';
-import { Sheet, SheetItem, ConfirmSheet, FieldLabel, colourClass } from '../components/ui';
+import { Sheet, SheetItem, ConfirmSheet, FieldLabel, colourClass, colourStyle } from '../components/ui';
 import { IconBack, IconDots, IconTick, IconTrash, IconCamera, IconPlus, IconPencil } from '../components/icons';
 import { useUndo } from '../lib/undo';
 
@@ -35,7 +35,12 @@ function TaskForm({ task }: { task: Task }) {
   const siblings = useLiveQuery(() => db.tasks.where('projectId').equals(task.projectId).toArray(), [task.projectId]) ?? [];
   const updates = useLiveQuery(() => db.updates.where('taskId').equals(task.id).toArray(), [task.id]) ?? [];
   const photos = useLiveQuery(() => db.photos.where('taskId').equals(task.id).toArray(), [task.id]) ?? [];
-  const shopItems = useLiveQuery(() => db.shopItems.where('taskId').equals(task.id).toArray(), [task.id]) ?? [];
+  // items cleared off the shopping list are tidied off the task too
+  const shopItems =
+    useLiveQuery(
+      () => db.shopItems.where('taskId').equals(task.id).filter((s) => s.clearedAt === null).toArray(),
+      [task.id]
+    ) ?? [];
   const live = useLiveQuery(() => db.tasks.get(task.id), [task.id]) ?? task;
 
   // local drafts so typing never fights the database
@@ -181,7 +186,7 @@ function TaskForm({ task }: { task: Task }) {
   const colour = project ? colourClass(project.colour) : '';
 
   return (
-    <div className={`screen ${colour}`}>
+    <div className={`screen ${colour}`} style={project ? colourStyle(project) : undefined}>
       <header className="topbar">
         <button className="iconbtn" aria-label="Back" onClick={() => navigate(-1)}>
           <IconBack />
@@ -298,13 +303,13 @@ function TaskForm({ task }: { task: Task }) {
 
       <div className="field">
         <FieldLabel
-          text="Notes"
+          text="Task updates and notes"
           help="Your running history for this task. Each note you add is saved with the date and time, so you can look back and see exactly what happened when."
         />
         <div className="update-add">
           <textarea
             value={newUpdate}
-            placeholder="What's happened?"
+            placeholder="Add your notes on what you have done so far here"
             rows={2}
             onChange={(e) => setNewUpdate(e.target.value)}
           />

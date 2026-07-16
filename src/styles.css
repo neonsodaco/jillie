@@ -327,6 +327,12 @@ a { color: inherit; text-decoration: none; }
 }
 .swatch.sel { border-color: var(--ink); transform: scale(1.05); }
 .swatch.sel::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1rem; }
+/* the pick-your-own swatch: a rainbow wheel until a colour is chosen */
+.swatch-custom {
+  display: block; overflow: hidden; cursor: pointer;
+  background: conic-gradient(#f9a870, #f48fbe, #c393f2, #85aff5, #6fd1c4, #7ed9a0, #f9a870);
+}
+.swatch-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 
 /* ---------- updates feed ---------- */
 .update-item { padding: 0.625rem 0; border-bottom: 1px solid var(--line); }

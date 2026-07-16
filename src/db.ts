@@ -45,6 +45,7 @@ export interface Project {
   id: string;
   name: string;
   colour: ColourKey;
+  customColour: string | null; // her own pick (#rrggbb); overrides the palette colour's look when set
   archivedAt: number | null;
   deletedAt: number | null;   // soft delete; purged after the undo window
   createdAt: number;
@@ -99,7 +100,7 @@ export interface ShopItem {
   name: string;
   store: StoreType;
   done: boolean; // bought
-  clearedAt: number | null; // tidied off the shopping list, but NEVER off its task
+  clearedAt: number | null; // tidied away — hidden from the list and its task, record kept
   createdAt: number;
 }
 
@@ -133,7 +134,7 @@ class TrackerDB extends Dexie {
           })
       );
     this.version(3).upgrade(async (tx) => {
-      // cleared items stay on their tasks; they only leave the shopping list
+      // clearing hides an item from view; the record itself is kept
       await tx
         .table('shopItems')
         .toCollection()
@@ -148,6 +149,15 @@ class TrackerDB extends Dexie {
           if (t.archivedAt !== null) t.archivedAt = null;
         });
     });
+    this.version(4).upgrade((tx) =>
+      // custom colours arrive: existing projects keep their palette colour
+      tx
+        .table('projects')
+        .toCollection()
+        .modify((p) => {
+          if (p.customColour === undefined) p.customColour = null;
+        })
+    );
   }
 }
 

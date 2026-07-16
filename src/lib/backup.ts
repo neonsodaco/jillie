@@ -103,7 +103,7 @@ async function writeRestored(
 ): Promise<void> {
   await db.transaction('rw', db.projects, db.tasks, db.updates, db.photos, db.shopItems, async () => {
     await Promise.all([db.projects.clear(), db.tasks.clear(), db.updates.clear(), db.photos.clear(), db.shopItems.clear()]);
-    await db.projects.bulkAdd(projects);
+    await db.projects.bulkAdd(projects.map((p) => ({ ...p, customColour: p.customColour ?? null })));
     await db.tasks.bulkAdd(tasks.map((t) => ({ ...t, physicalDemand: t.physicalDemand ?? 'medium', archivedAt: t.archivedAt ?? null })));
     await db.updates.bulkAdd(updates);
     await db.photos.bulkAdd(photos);

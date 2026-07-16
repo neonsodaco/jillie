@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, hardDeleteProject, snapshotProject, restoreProjectSnapshot, type Project } from '../db';
 import { stampWords } from '../lib/dates';
-import { ConfirmSheet, colourClass } from '../components/ui';
+import { ConfirmSheet, colourClass, colourStyle } from '../components/ui';
 import { IconBack, IconTrash } from '../components/icons';
 import { useUndo } from '../lib/undo';
 
@@ -60,7 +60,7 @@ export default function ArchiveScreen() {
       )}
 
       {archivedProjects.map((p) => (
-        <div key={p.id} className={`arch-row card ${colourClass(p.colour)}`}>
+        <div key={p.id} className={`arch-row card ${colourClass(p.colour)}`} style={colourStyle(p)}>
           <span className="dot" aria-hidden />
           <div className="body">
             <div style={{ fontWeight: 700 }}>{p.name}</div>

@@ -7,7 +7,7 @@ import { dueLine, stampWords } from '../lib/dates';
 import { tickMessage } from '../lib/encourage';
 import { celebrateTick } from '../lib/confetti';
 import { Linkify } from '../components/Linkify';
-import { ProgressBar, progressWords, Sheet, SheetItem, ConfirmSheet, ColourPicker, colourClass } from '../components/ui';
+import { ProgressBar, progressWords, Sheet, SheetItem, ConfirmSheet, ColourPicker, colourClass, colourStyle } from '../components/ui';
 import { IconBack, IconDots, IconTick, IconGrip, IconArchive, IconTrash, IconPencil, IconPalette, IconPlus, IconCamera, IconFlag } from '../components/icons';
 import { useUndo } from '../lib/undo';
 
@@ -223,7 +223,7 @@ export default function ProjectView() {
   }
 
   return (
-    <div className={`screen ${colourClass(project.colour)}`}>
+    <div className={`screen ${colourClass(project.colour)}`} style={colourStyle(project)}>
       <header className="topbar">
         <button className="iconbtn" aria-label="Back" onClick={() => navigate(-1)}>
           <IconBack />
@@ -240,7 +240,14 @@ export default function ProjectView() {
         <div className="progress-words">{progressWords(done, total)}</div>
       </div>
 
-      {allDone && <div className="celebrate">Project finished — well done, Jillian.</div>}
+      {allDone && (
+        <>
+          <div className="celebrate">Project finished — well done, Jillian.</div>
+          <button className="btn btn-tint btn-block" style={{ marginBottom: '1rem' }} onClick={archiveProject}>
+            <IconArchive size={18} /> Archive this project
+          </button>
+        </>
+      )}
 
       {latestNotes.length > 0 && (
         <>
@@ -369,9 +376,11 @@ export default function ProjectView() {
           <h2>Colour for {project.name}</h2>
           <ColourPicker
             value={project.colour}
-            onChange={async (c) => {
-              await db.projects.update(project.id, { colour: c });
-              setRecolouring(false);
+            custom={project.customColour}
+            onChange={async (c, custom) => {
+              await db.projects.update(project.id, { colour: c, customColour: custom });
+              // a palette tap is final; her own pick keeps the sheet open to fiddle
+              if (!custom) setRecolouring(false);
             }}
           />
         </Sheet>

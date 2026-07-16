@@ -10,7 +10,7 @@ import { buildFeed } from '../lib/feed';
 import { recentWins, winsLine } from '../lib/encourage';
 import { shouldNudgeBackup, snoozeBackupNudge } from '../lib/backup';
 import { BackupSheet } from '../components/BackupSheet';
-import { ProgressBar, Sheet, SheetItem, colourClass } from '../components/ui';
+import { ProgressBar, Sheet, SheetItem, colourClass, colourStyle } from '../components/ui';
 import { IconHelp, IconDots, IconArchive, IconShare, IconList } from '../components/icons';
 import { useUndo } from '../lib/undo';
 
@@ -94,6 +94,7 @@ export default function Dashboard() {
                 <button
                   key={p.id}
                   className={`proj-chip ${colourClass(p.colour)}`}
+                  style={colourStyle(p)}
                   onClick={() => navigate(`/project/${p.id}`)}
                 >
                   <div className="pname">{p.name}</div>
@@ -125,6 +126,7 @@ export default function Dashboard() {
                 {isTop ? (
                   <button
                     className={`hero-pick card ${colourClass(project.colour)}`}
+                    style={colourStyle(project)}
                     onClick={() => navigate(`/task/${task.id}`)}
                   >
                     <span className="hname">
@@ -139,6 +141,7 @@ export default function Dashboard() {
                 ) : (
                   <button
                     className={`feed-item card ${colourClass(project.colour)}`}
+                    style={colourStyle(project)}
                     onClick={() => navigate(`/task/${task.id}`)}
                   >
                     <span className="dot" aria-hidden />
@@ -177,12 +180,12 @@ export default function Dashboard() {
       {creating && (
         <NewProjectSheet
           onClose={() => setCreating(false)}
-          onCreate={(name, colour) => {
+          onCreate={(name, colour, customColour) => {
             // close first, then save — the popup never lingers
             setCreating(false);
             const id = uid();
             db.projects
-              .add({ id, name, colour, archivedAt: null, deletedAt: null, createdAt: Date.now() })
+              .add({ id, name, colour, customColour, archivedAt: null, deletedAt: null, createdAt: Date.now() })
               .then(() => navigate(`/project/${id}`))
               .catch(() => toast("That didn't save — try again."));
           }}

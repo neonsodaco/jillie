@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, active } from '../db';
 import { labelMap } from '../lib/numbering';
 import { guidePicks, getTodayEnergy, setTodayEnergy, clearTodayEnergy, type Energy } from '../lib/guide';
-import { colourClass } from '../components/ui';
+import { colourClass, colourStyle } from '../components/ui';
 import { IconHeart } from '../components/icons';
 
 /**
@@ -129,6 +129,7 @@ export default function GuideMe() {
             <button
               key={task.id}
               className={`hero-pick card ${colourClass(project.colour)}`}
+              style={colourStyle(project)}
               onClick={() => navigate(`/task/${task.id}`)}
             >
               <span className="hname">
@@ -151,6 +152,7 @@ export default function GuideMe() {
             <button
               key={task.id}
               className={`feed-item card ${colourClass(project.colour)}`}
+              style={colourStyle(project)}
               onClick={() => navigate(`/task/${task.id}`)}
             >
               <span className="dot" aria-hidden />

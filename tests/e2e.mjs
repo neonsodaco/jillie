@@ -72,7 +72,7 @@ check('new project button on Today', !!(await page.$('.new-proj-inline')));
 await clickText('.bottomnav a', 'Projects'); await sleep(300);
 await clickText('button', 'New project'); await sleep(300);
 await page.type('.sheet input[type=text]', 'Laundry reno');
-check('twelve colour choices', (await page.$$eval('.swatch', (els) => els.length)) === 12);
+check('twelve colours plus pick-your-own', (await page.$$eval('.swatch', (els) => els.length)) === 13);
 const swatchCols = await page.$$eval('.swatch', (els) => els.map((e) => getComputedStyle(e).backgroundColor));
 check('palette is the pastel flower set', swatchCols.includes('rgb(244, 143, 190)') && swatchCols.includes('rgb(117, 213, 232)') && !swatchCols.includes('rgb(138, 111, 75)'), JSON.stringify(swatchCols));
 await page.evaluate(() => [...document.querySelectorAll('.swatch')][2].click()); // blue
@@ -130,11 +130,12 @@ check('description is second field', await page.evaluate(() => {
   return fieldLabels[0] === 'Task name' && fieldLabels[1] === 'Task description';
 }));
 await page.type('textarea[placeholder^="What\'s this task about"]', 'Cabinet from Bunnings Bayswater, ask for Karen');
-await page.type('textarea[placeholder="What\'s happened?"]', 'Rang Bunnings, cabinet arrives Thursday.');
+await page.type('textarea[placeholder^="Add your notes"]', 'Rang Bunnings, cabinet arrives Thursday.');
 await clickText('.update-add button', 'Add'); await sleep(300);
 t = await text();
 check('note stamped with date and time', /\w{3} \d{1,2} \w+, \d{1,2}:\d{2} (am|pm)/.test(t) && t.includes('Rang Bunnings'));
-check('note box cleared itself', (await page.$eval('textarea[placeholder="What\'s happened?"]', (e) => e.value)) === '');
+check('note box cleared itself', (await page.$eval('textarea[placeholder^="Add your notes"]', (e) => e.value)) === '');
+check('notes field renamed', (await text()).includes('Task updates and notes'));
 check('Mark as done is last, after Save task', await page.evaluate(() => {
   const save = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save task');
   const done = document.querySelector('.btn-done');
@@ -180,7 +181,7 @@ await clickText('.sheet-item', 'Supermarket'); await sleep(250);
 await clickText('.shop-add-row button', 'Add'); await sleep(300);
 const chips = await page.$$eval('.shop-mini-item', (els) => els.map((e) => e.textContent));
 check('items chip up on the task', chips.includes('Sandpaper, 120 grit') && chips.includes('Sugar soap'), JSON.stringify(chips));
-await page.type('textarea[placeholder="What\'s happened?"]', 'Found the taps here https://example.com/taps.');
+await page.type('textarea[placeholder^="Add your notes"]', 'Found the taps here https://example.com/taps.');
 await clickText('.update-add button', 'Add'); await sleep(300);
 const link = await page.$eval('.note-link', (a) => ({ href: a.href, target: a.target })).catch(() => null);
 check('note link active, opens in browser', link?.href === 'https://example.com/taps' && link?.target === '_blank', JSON.stringify(link));
@@ -319,13 +320,13 @@ check('queue advances when the blocker is done', (await page.$eval('.hero-pick',
 await page.goto(URL_BASE + '#/projects', { waitUntil: 'networkidle0' }); await sleep(300);
 await openProject('Laundry reno');
 await openTask('Measure the wall space');
-await page.type('textarea[placeholder="What\'s happened?"]', 'Bob confirmed for Tuesday');
+await page.type('textarea[placeholder^="Add your notes"]', 'Bob confirmed for Tuesday');
 await clickText('.update-add button', 'Add'); await sleep(300);
 await page.evaluate(() => window.history.back()); await sleep(400);
 t = await text();
 check('done-task notes hidden from Latest updates', /latest updates/i.test(t) && !t.includes('Bob confirmed'));
 
-// ---------- 18. shopping: Bought, clear keeps chips, edit, filters ----------
+// ---------- 18. shopping: Bought, clear tidies everywhere, edit, filters ----------
 await page.goto(URL_BASE + '#/shopping', { waitUntil: 'networkidle0' }); await sleep(400);
 t = await text();
 check('nav has four tabs', (await page.$$eval('.bottomnav a', (els) => els.length)) === 4);
@@ -357,7 +358,7 @@ await page.goto(URL_BASE + '#/projects', { waitUntil: 'networkidle0' }); await s
 await openProject('Laundry reno');
 await openTask('Order the new cabinet');
 t = await text();
-check('cleared item still on its task', t.includes('Sugar soap'));
+check('cleared item tidied off its task too', !t.includes('Sugar soap'));
 check('unbought chip green + tappable', !!(await page.$('button.shop-mini-item.active')));
 
 // ---------- 19. new project from Today; alphabetical; pastel cards ----------
@@ -374,6 +375,10 @@ await page.type('.quickadd input', 'Only task');
 await clickText('.quickadd button', 'Add'); await sleep(300);
 await page.evaluate(() => document.querySelector('.tick').click()); await sleep(600);
 check('tiny project finished', (await text()).includes('Project finished'));
+check('archive button offered on finished project', (await text()).includes('Archive this project'));
+await page.goto(URL_BASE + '#/projects', { waitUntil: 'networkidle0' }); await sleep(400);
+await openProject('Laundry reno');
+check('no archive button while tasks remain', !(await text()).includes('Archive this project'));
 await page.goto(URL_BASE + '#/projects', { waitUntil: 'networkidle0' }); await sleep(400);
 const cardNames = await page.$$eval('.proj-card h3', (els) => els.map((e) => e.textContent));
 check('projects screen alphabetical', cardNames[0] === 'Deck oiling' && cardNames[1] === 'Laundry reno', JSON.stringify(cardNames));
@@ -437,6 +442,60 @@ await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
 check('dark mode: page keeps light background', (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === 'rgb(250, 247, 242)');
 check('dark mode: colour-scheme declared light only', (await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).includes('light'));
 await page.emulateMediaFeatures([]);
+
+// ---------- 24. custom colour: the 13th swatch (round 6) ----------
+await page.goto(URL_BASE + '#/projects', { waitUntil: 'networkidle0' }); await sleep(400);
+await page.evaluate(() => {
+  const card = [...document.querySelectorAll('.proj-card')].find((c) => c.textContent.includes('Deck oiling'));
+  card.querySelector('[aria-label^="Options for"]').click();
+}); await sleep(300);
+await clickText('.sheet-item', 'Change colour'); await sleep(300);
+check('custom swatch is the 13th option', (await page.$$eval('.swatch', (els) => els.length)) === 13 && !!(await page.$('.swatch-custom input[type=color]')));
+await page.evaluate(() => {
+  const i = document.querySelector('.swatch-custom input[type=color]');
+  const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  s.call(i, '#1c2d5e'); // deep navy — must come out pastel, ink text readable
+  i.dispatchEvent(new Event('input', { bubbles: true }));
+  i.dispatchEvent(new Event('change', { bubbles: true }));
+}); await sleep(400);
+check('custom pick keeps the sheet open to fiddle', !!(await page.$('.sheet')));
+check('custom swatch shows as selected', !!(await page.$('.swatch-custom.sel')));
+await page.evaluate(() => document.querySelector('.sheet-backdrop').click()); await sleep(300);
+const customBg = await page.evaluate(() => {
+  const card = [...document.querySelectorAll('.proj-card')].find((c) => c.textContent.includes('Deck oiling'));
+  return getComputedStyle(card).backgroundColor;
+});
+check('project card wears her own colour', !pastelBlooms.includes(customBg), customBg);
+check('her pick is pastelised so text stays readable', (() => {
+  const [r, g, b] = customBg.match(/\d+/g).map(Number);
+  return (Math.max(r, g, b) + Math.min(r, g, b)) / 2 / 255 > 0.6;
+})(), customBg);
+await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
+check('custom colour survives a refresh', (await page.evaluate(() => {
+  const card = [...document.querySelectorAll('.proj-card')].find((c) => c.textContent.includes('Deck oiling'));
+  return getComputedStyle(card).backgroundColor;
+})) === customBg);
+
+// ---------- 25. Today: dateless tasks under "Ready when you are" (round 6) ----------
+await page.goto(URL_BASE + '#/', { waitUntil: 'networkidle0' }); await sleep(400);
+await clickText('.new-proj-inline', 'New project'); await sleep(300);
+await page.type('.sheet input[type=text]', 'Anytime jobs');
+await clickText('button', 'Create project'); await sleep(500);
+await page.type('.quickadd input', 'Sort the shed');
+await clickText('.quickadd button', 'Add'); await sleep(300);
+await page.goto(URL_BASE + '#/', { waitUntil: 'networkidle0' }); await sleep(400);
+t = await text();
+check('dateless task shows under Ready when you are', /ready when you are/i.test(t) && t.includes('Sort the shed'));
+check('urgent groups still come first', t.toLowerCase().indexOf('running late') !== -1 && t.toLowerCase().indexOf('running late') < t.toLowerCase().indexOf('ready when you are'));
+// and Guide Me still offers the same dateless task
+await page.goto(URL_BASE + '#/guide', { waitUntil: 'networkidle0' }); await sleep(400);
+if ((await text()).includes('How are you feeling')) {
+  await clickText('.energy-card', 'Full of beans'); await sleep(400);
+} else {
+  await clickText('button', 'Feeling different?'); await sleep(300);
+  await clickText('.energy-card', 'Full of beans'); await sleep(400);
+}
+check('Guide Me offers the dateless task too', (await text()).includes('Sort the shed'));
 
 await browser.close();
 console.log(failures === 0 ? '\nE2E ALL PASS' : `\n${failures} E2E FAILURES`);

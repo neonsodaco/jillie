@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, uid, active, STORE_TYPES, type StoreType, type ShopItem } from '../db';
 import { progress } from '../lib/numbering';
-import { Sheet, colourClass, FieldLabel } from '../components/ui';
+import { Sheet, colourClass, colourStyle, FieldLabel } from '../components/ui';
 import { ShopItemEditSheet } from '../components/ShopItemSheet';
 import { StorePicker } from '../components/StorePicker';
 import { IconTick, IconTrash, IconPlus } from '../components/icons';
@@ -48,8 +48,8 @@ export default function Shopping() {
     [items, projectsById, projectFilter, storeFilter]
   );
   const toBuy = visible.filter((i) => !i.done);
-  // bought items stay here until she clears them; clearing only hides them
-  // from this list — they NEVER leave their task
+  // bought items stay here until she clears them; clearing tidies them away
+  // everywhere (here and on their task) — the record itself is kept
   const gotIt = visible.filter((i) => i.done && i.clearedAt === null);
 
   // group the to-buy list by store so a shop trip reads top to bottom
@@ -80,7 +80,7 @@ export default function Shopping() {
   const row = (item: ShopItem) => {
     const p = projectsById.get(item.projectId)!;
     return (
-      <div key={item.id} className={`shop-row card ${colourClass(p.colour)}${item.done ? ' got' : ''}`}>
+      <div key={item.id} className={`shop-row card ${colourClass(p.colour)}${item.done ? ' got' : ''}`} style={colourStyle(p)}>
         <button
           className={`tick small${item.done ? ' on' : ''}`}
           aria-label={item.done ? `Mark ${item.name} as still needed` : `Got ${item.name}`}

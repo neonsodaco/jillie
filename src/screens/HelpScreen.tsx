@@ -45,8 +45,9 @@ export default function HelpScreen() {
         <h2>Your Today screen</h2>
         <p>
           Open the app and it shows you what needs you today: anything running late, anything due, anything
-          important, and anything you haven't touched in a while. Each line says why it's there. If the screen
-          says nothing needs you — believe it, and enjoy the cuppa.
+          important, and anything you haven't touched in a while. Underneath those sits "Ready when you are" —
+          the next step of every other project, so a task without a date never goes missing. Each line says why
+          it's there. If the screen says nothing needs you — believe it, and enjoy the cuppa.
         </p>
       </div>
 
@@ -54,7 +55,8 @@ export default function HelpScreen() {
         <h2>Projects and their colours</h2>
         <p>
           Every project gets its own colour, and that colour follows it everywhere — so a glance tells you what
-          belongs to what. The bar under each project fills up as you tick things off, and it always says it in
+          belongs to what. Pick from the ready-made colours, or tap the rainbow circle to choose any colour you
+          like. The bar under each project fills up as you tick things off, and it always says it in
           words too: "7 of 12 things done".
         </p>
       </div>

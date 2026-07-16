@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, uid, active, type PendingShare } from '../db';
 import { labelMap } from '../lib/numbering';
 import { compressPhoto } from '../lib/images';
-import { colourClass } from '../components/ui';
+import { colourClass, colourStyle } from '../components/ui';
 import { IconBack } from '../components/icons';
 import { useUndo } from '../lib/undo';
 
@@ -152,6 +152,7 @@ export default function SharePicker() {
           <button
             key={t.id}
             className={`feed-item card ${colourClass(p.colour)}`}
+            style={colourStyle(p)}
             disabled={attaching}
             onClick={() => attachTo(t.id)}
           >

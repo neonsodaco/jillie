@@ -8,6 +8,10 @@ import { daysUntil, daysSince, dueLine } from './dates';
  * the FIRST unticked step. Its urgency is inherited from anything it
  * unlocks: if step 2 is next and step 5 is overdue, step 2 appears under
  * "Running late" with "clears the way for 5. … — was due Friday".
+ *
+ * Every project with an open step ALWAYS appears: steps with no urgency
+ * at all (no dates, normal priority) sit at the bottom under "Ready when
+ * you are", so a task without a due date can never get lost.
  */
 
 export interface FeedItem {
@@ -49,8 +53,8 @@ function taskUrgency(t: Task): number | null {
 /**
  * For a project's tasks (done + open, in numbered order): the next
  * actionable step, plus the strongest urgency among it and everything
- * it blocks. Returns null when the project has nothing open or nothing
- * urgent/stale to surface.
+ * it blocks (urgency is null when nothing is urgent or stale). Returns
+ * null only when the project has no open step at all.
  */
 export function nextStepUrgency(
   projectTasks: Task[],
@@ -105,24 +109,36 @@ export function buildFeed(
       (t) => t.projectId === project.id && t.deletedAt === null && t.archivedAt === null
     );
     const next = nextStepUrgency(projTasks, latestUpdateByTask);
-    if (!next || !next.urgency) continue;
-    const { why, overdue } = urgencyWhy(next.urgency, latestUpdateByTask);
-    picks.push({
-      item: { task: next.actionable, project, label: next.label, why, overdue },
-      rank: next.urgency.rank,
-      due: next.urgency.srcTask.dueDate ?? '9999',
-      prio: prioRank[next.urgency.srcTask.priority]
-    });
+    if (!next) continue;
+    let why = '';
+    let overdue = false;
+    let rank = 5; // no urgency anywhere: ready when she is
+    let due = '9999';
+    let prio = prioRank[next.actionable.priority];
+    if (next.urgency) {
+      ({ why, overdue } = urgencyWhy(next.urgency, latestUpdateByTask));
+      rank = next.urgency.rank;
+      due = next.urgency.srcTask.dueDate ?? '9999';
+      prio = prioRank[next.urgency.srcTask.priority];
+    }
+    picks.push({ item: { task: next.actionable, project, label: next.label, why, overdue }, rank, due, prio });
   }
 
-  picks.sort((a, b) => a.rank - b.rank || a.due.localeCompare(b.due) || a.prio - b.prio);
+  picks.sort(
+    (a, b) =>
+      a.rank - b.rank ||
+      a.due.localeCompare(b.due) ||
+      a.prio - b.prio ||
+      a.item.project.name.localeCompare(b.item.project.name, undefined, { sensitivity: 'base' })
+  );
 
   const defs = [
     { key: 'overdue', heading: 'Running late' },
     { key: 'today', heading: 'On today' },
     { key: 'important', heading: 'Important' },
     { key: 'soon', heading: 'Coming up' },
-    { key: 'stale', heading: 'Waiting for an update' }
+    { key: 'stale', heading: 'Waiting for an update' },
+    { key: 'anytime', heading: 'Ready when you are' }
   ];
   return defs
     .map((d, i) => ({ ...d, items: picks.filter((p) => p.rank === i).map((p) => p.item) }))

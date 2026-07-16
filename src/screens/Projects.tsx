@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, uid, active, hardDeleteProject, snapshotProject, restoreProjectSnapshot, type Project } from '../db';
 import { nextTask, progress } from '../lib/numbering';
-import { ProgressBar, progressWords, Sheet, SheetItem, ConfirmSheet, ColourPicker, colourClass } from '../components/ui';
+import { ProgressBar, progressWords, Sheet, SheetItem, ConfirmSheet, ColourPicker, colourClass, colourStyle } from '../components/ui';
 import { NewProjectSheet } from '../components/NewProjectSheet';
 import { IconDots, IconArchive, IconTrash, IconPencil, IconPalette } from '../components/icons';
 import { useUndo } from '../lib/undo';
@@ -72,7 +72,7 @@ export default function Projects() {
   const card = (p: Project) => {
     const s = stats.get(p.id)!;
     return (
-      <div key={p.id} className={`proj-card ${colourClass(p.colour)}`}>
+      <div key={p.id} className={`proj-card ${colourClass(p.colour)}`} style={colourStyle(p)}>
         <span className="band" aria-hidden />
         <button className="inner" onClick={() => navigate(`/project/${p.id}`)}>
           <div className="prow">
@@ -124,12 +124,12 @@ export default function Projects() {
       {creating && (
         <NewProjectSheet
           onClose={() => setCreating(false)}
-          onCreate={(name, colour) => {
+          onCreate={(name, colour, customColour) => {
             // close first, then save — the popup never lingers
             setCreating(false);
             const id = uid();
             db.projects
-              .add({ id, name, colour, archivedAt: null, deletedAt: null, createdAt: Date.now() })
+              .add({ id, name, colour, customColour, archivedAt: null, deletedAt: null, createdAt: Date.now() })
               .then(() => navigate(`/project/${id}`))
               .catch(() => undo.toast("That didn't save — try again."));
           }}
@@ -161,10 +161,12 @@ export default function Projects() {
         <Sheet onClose={() => setRecolouring(null)} label="Change colour">
           <h2>Colour for {recolouring.name}</h2>
           <ColourPicker
-            value={recolouring.colour}
-            onChange={async (c) => {
-              await db.projects.update(recolouring.id, { colour: c });
-              setRecolouring(null);
+            value={(projects.find((p) => p.id === recolouring.id) ?? recolouring).colour}
+            custom={(projects.find((p) => p.id === recolouring.id) ?? recolouring).customColour}
+            onChange={async (c, custom) => {
+              await db.projects.update(recolouring.id, { colour: c, customColour: custom });
+              // a palette tap is final; her own pick keeps the sheet open to fiddle
+              if (!custom) setRecolouring(null);
             }}
           />
         </Sheet>

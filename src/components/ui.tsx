@@ -1,9 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { COLOURS, type ColourKey } from '../db';
+import { customColourVars } from '../lib/colour';
 import { IconHome, IconList, IconCart, IconCompass } from './icons';
 
 export const colourClass = (c: ColourKey) => `c-${c}`;
+
+/** Inline colour variables when the project wears a custom colour; pairs with colourClass. */
+export const colourStyle = (p: { customColour?: string | null }): CSSProperties | undefined =>
+  p.customColour ? customColourVars(p.customColour) : undefined;
 
 /* ---------- progress bar: always thick, always in words ---------- */
 export function ProgressBar({ done, total, finishedGlow = false }: { done: number; total: number; finishedGlow?: boolean }) {
@@ -127,7 +132,15 @@ export function ConfirmSheet({
 }
 
 /* ---------- colour swatches ---------- */
-export function ColourPicker({ value, onChange }: { value: ColourKey; onChange: (c: ColourKey) => void }) {
+export function ColourPicker({
+  value,
+  custom = null,
+  onChange
+}: {
+  value: ColourKey;
+  custom?: string | null;
+  onChange: (c: ColourKey, custom: string | null) => void;
+}) {
   return (
     <div className="swatch-grid" role="radiogroup" aria-label="Project colour">
       {COLOURS.map((c) => (
@@ -135,12 +148,24 @@ export function ColourPicker({ value, onChange }: { value: ColourKey; onChange: 
           key={c.key}
           type="button"
           role="radio"
-          aria-checked={value === c.key}
+          aria-checked={!custom && value === c.key}
           aria-label={c.label}
-          className={`swatch ${colourClass(c.key)}${value === c.key ? ' sel' : ''}`}
-          onClick={() => onChange(c.key)}
+          className={`swatch ${colourClass(c.key)}${!custom && value === c.key ? ' sel' : ''}`}
+          onClick={() => onChange(c.key, null)}
         />
       ))}
+      {/* the 13th swatch: her own colour — a label so one tap opens the phone's picker */}
+      <label
+        className={`swatch swatch-custom${custom ? ' sel' : ''}`}
+        style={custom ? { ...customColourVars(custom), background: 'var(--c)' } : undefined}
+      >
+        <input
+          type="color"
+          value={custom ?? '#7ed9a0'}
+          aria-label="Pick your own colour"
+          onChange={(e) => onChange(value, e.target.value)}
+        />
+      </label>
     </div>
   );
 }
