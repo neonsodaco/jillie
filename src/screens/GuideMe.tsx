@@ -148,21 +148,21 @@ export default function GuideMe() {
       {rest.length > 0 && (
         <>
           <div className="feed-head">Also fits today</div>
+          {/* same full card as the top picks \u2014 no skinny rows (round 9) */}
           {rest.map(({ task, project, why, overdue }) => (
             <button
               key={task.id}
-              className={`feed-item card ${colourClass(project.colour)}`}
+              className={`hero-pick card ${colourClass(project.colour)}`}
               style={colourStyle(project)}
               onClick={() => navigate(`/task/${task.id}`)}
             >
-              <span className="dot" aria-hidden />
-              {labels.get(task.id) && <span className="stepno">{labels.get(task.id)}</span>}
-              <span className="body">
-                <span className="name">{task.name || 'Untitled task'}</span>
-                <span className={`why${overdue ? ' overdue' : ''}`}>
-                  <strong>{project.name}</strong>
-                  {why ? ` \u00b7 ${why}` : ''}
-                </span>
+              <span className="hname">
+                {labels.get(task.id) && <span className="stepno">{labels.get(task.id)}</span>}
+                {task.name || 'Untitled task'}
+              </span>
+              <span className={`hwhy${overdue ? ' overdue' : ''}`}>
+                <strong>{project.name}</strong>
+                {why ? ` \u00b7 ${why}` : ''}
               </span>
             </button>
           ))}

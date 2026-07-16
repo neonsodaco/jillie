@@ -1,5 +1,5 @@
 import { unzip, strFromU8 } from 'fflate';
-import { db, uid, type Project, type Task, type Update, type Photo, type ShopItem } from '../db';
+import { db, uid, type Project, type Task, type Update, type Photo, type ShopItem, type Need } from '../db';
 import { makeThumb } from './images';
 
 /**
@@ -20,6 +20,7 @@ interface BackupV3 {
   tasks: Task[];
   updates: Update[];
   shopItems: ShopItem[];
+  needs?: Need[]; // packing lists (v1.7.0+); older backups simply don't have any
   photos: { id: string; taskId: string; caption: string; createdAt: number; data: string }[];
 }
 
@@ -64,12 +65,13 @@ export function backupFilename(): string {
 }
 
 export async function buildBackup(): Promise<File> {
-  const [projects, tasks, updates, photos, shopItems] = await Promise.all([
+  const [projects, tasks, updates, photos, shopItems, needs] = await Promise.all([
     db.projects.toArray(),
     db.tasks.toArray(),
     db.updates.toArray(),
     db.photos.toArray(),
-    db.shopItems.toArray()
+    db.shopItems.toArray(),
+    db.needs.toArray()
   ]);
   const photosOut: BackupV3['photos'] = [];
   for (const p of photos) {
@@ -89,6 +91,7 @@ export async function buildBackup(): Promise<File> {
     tasks,
     updates,
     shopItems,
+    needs,
     photos: photosOut
   };
   return new File([JSON.stringify(data)], backupFilename(), { type: 'text/plain' });
@@ -99,15 +102,17 @@ async function writeRestored(
   tasks: Task[],
   updates: Update[],
   shopItems: ShopItem[],
-  photos: Photo[]
+  photos: Photo[],
+  needs: Need[]
 ): Promise<void> {
-  await db.transaction('rw', db.projects, db.tasks, db.updates, db.photos, db.shopItems, async () => {
-    await Promise.all([db.projects.clear(), db.tasks.clear(), db.updates.clear(), db.photos.clear(), db.shopItems.clear()]);
+  await db.transaction('rw', [db.projects, db.tasks, db.updates, db.photos, db.shopItems, db.needs], async () => {
+    await Promise.all([db.projects.clear(), db.tasks.clear(), db.updates.clear(), db.photos.clear(), db.shopItems.clear(), db.needs.clear()]);
     await db.projects.bulkAdd(projects.map((p) => ({ ...p, customColour: p.customColour ?? null })));
     await db.tasks.bulkAdd(tasks.map((t) => ({ ...t, physicalDemand: t.physicalDemand ?? 'medium', archivedAt: t.archivedAt ?? null })));
     await db.updates.bulkAdd(updates);
     await db.photos.bulkAdd(photos);
     if (shopItems.length) await db.shopItems.bulkAdd(shopItems.map((i) => ({ ...i, clearedAt: i.clearedAt ?? null })));
+    if (needs.length) await db.needs.bulkAdd(needs.map((n) => ({ ...n, packed: n.packed ?? false })));
   });
 }
 
@@ -138,7 +143,7 @@ async function restoreZip(bytes: Uint8Array): Promise<{ projects: number; tasks:
       // one unreadable photo shouldn't cost her the whole restore
     }
   }
-  await writeRestored(data.projects, data.tasks, data.updates, data.shopItems ?? [], photos);
+  await writeRestored(data.projects, data.tasks, data.updates, data.shopItems ?? [], photos, []);
   return { projects: data.projects.length, tasks: data.tasks.length, photos: photos.length };
 }
 
@@ -171,7 +176,7 @@ export async function restoreBackup(file: Blob): Promise<{ projects: number; tas
       // one unreadable photo shouldn't cost her the whole restore
     }
   }
-  await writeRestored(data.projects, data.tasks, data.updates, data.shopItems ?? [], photos);
+  await writeRestored(data.projects, data.tasks, data.updates, data.shopItems ?? [], photos, data.needs ?? []);
   return { projects: data.projects.length, tasks: data.tasks.length, photos: photos.length };
 }
 

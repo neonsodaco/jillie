@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { db, STORE_TYPES, type ShopItem, type StoreType } from '../db';
-import { Sheet, FieldLabel } from './ui';
+import { Sheet, SheetItem, FieldLabel } from './ui';
+import { IconTrash } from './icons';
+import { useUndo } from '../lib/undo';
 
-/** Edit an unbought shopping item — fix the name or where it comes from. */
+/** Edit an unbought shopping item — fix the name or where it comes from, or take it off the list. */
 export function ShopItemEditSheet({ item, onClose }: { item: ShopItem; onClose: () => void }) {
+  const undo = useUndo();
   const [name, setName] = useState(item.name);
   const [store, setStore] = useState<StoreType>(item.store);
 
@@ -12,6 +15,17 @@ export function ShopItemEditSheet({ item, onClose }: { item: ShopItem; onClose: 
     await db.shopItems.update(item.id, { name: name.trim(), store });
     localStorage.setItem('shop.lastStore', store);
     onClose();
+  }
+
+  function deleteItem() {
+    onClose();
+    void db.shopItems.delete(item.id).then(() => {
+      undo.run({
+        message: `${item.name} taken off the shopping list.`,
+        revert: () => db.shopItems.add(item).then(() => undefined),
+        commit: () => undefined
+      });
+    });
   }
 
   return (
@@ -34,6 +48,7 @@ export function ShopItemEditSheet({ item, onClose }: { item: ShopItem; onClose: 
       <button className="btn btn-primary btn-block" disabled={!name.trim()} onClick={saveItem}>
         Save
       </button>
+      <SheetItem icon={<IconTrash />} label="Delete — take it off the list" danger onClick={deleteItem} />
     </Sheet>
   );
 }

@@ -92,6 +92,16 @@ export interface PendingShare {
   createdAt: number;
 }
 
+/** One thing to gather up before starting a task — tools, materials, bits from the shed.
+    Separate from the shopping list: nothing here is bought, only packed. */
+export interface Need {
+  id: string;
+  taskId: string;
+  name: string;
+  packed: boolean; // gathered and ready to take out
+  createdAt: number;
+}
+
 /** One thing to buy, tied to a project (and optionally the task it came from). */
 export interface ShopItem {
   id: string;
@@ -111,6 +121,7 @@ class TrackerDB extends Dexie {
   photos!: Table<Photo, string>;
   pendingShares!: Table<PendingShare, string>;
   shopItems!: Table<ShopItem, string>;
+  needs!: Table<Need, string>;
 
   constructor() {
     super('jillians-diy-projects');
@@ -158,6 +169,10 @@ class TrackerDB extends Dexie {
           if (p.customColour === undefined) p.customColour = null;
         })
     );
+    // things needed for a task — the packing checklist
+    this.version(5).stores({
+      needs: 'id, taskId'
+    });
   }
 }
 
@@ -180,12 +195,13 @@ export const alive = <T extends { deletedAt: number | null }>(rows: T[]): T[] =>
 export const active = <T extends { deletedAt: number | null; archivedAt: number | null }>(rows: T[]): T[] =>
   rows.filter((r) => r.deletedAt === null && r.archivedAt === null);
 
-/** Permanently remove a task, its sub-steps, and their updates and photos. */
+/** Permanently remove a task, its sub-steps, and their updates, photos and packing list. */
 export async function hardDeleteTasks(taskIds: string[]): Promise<void> {
   if (taskIds.length === 0) return;
-  await db.transaction('rw', db.tasks, db.updates, db.photos, db.shopItems, async () => {
+  await db.transaction('rw', db.tasks, db.updates, db.photos, db.shopItems, db.needs, async () => {
     await db.updates.where('taskId').anyOf(taskIds).delete();
     await db.photos.where('taskId').anyOf(taskIds).delete();
+    await db.needs.where('taskId').anyOf(taskIds).delete();
     // shopping items outlive the task — still things to buy, just untied from it
     await db.shopItems.where('taskId').anyOf(taskIds).modify({ taskId: null });
     await db.tasks.bulkDelete(taskIds);
@@ -216,27 +232,30 @@ export interface ProjectSnapshot {
   updates: Update[];
   photos: Photo[];
   shopItems: ShopItem[];
+  needs: Need[];
 }
 
 export async function snapshotProject(projectId: string): Promise<ProjectSnapshot> {
   const project = (await db.projects.get(projectId))!;
   const tasks = await db.tasks.where('projectId').equals(projectId).toArray();
   const taskIds = tasks.map((t) => t.id);
-  const [updates, photos, shopItems] = await Promise.all([
+  const [updates, photos, shopItems, needs] = await Promise.all([
     db.updates.where('taskId').anyOf(taskIds).toArray(),
     db.photos.where('taskId').anyOf(taskIds).toArray(),
-    db.shopItems.where('projectId').equals(projectId).toArray()
+    db.shopItems.where('projectId').equals(projectId).toArray(),
+    db.needs.where('taskId').anyOf(taskIds).toArray()
   ]);
-  return { project, tasks, updates, photos, shopItems };
+  return { project, tasks, updates, photos, shopItems, needs };
 }
 
 export async function restoreProjectSnapshot(s: ProjectSnapshot): Promise<void> {
-  await db.transaction('rw', db.projects, db.tasks, db.updates, db.photos, db.shopItems, async () => {
+  await db.transaction('rw', [db.projects, db.tasks, db.updates, db.photos, db.shopItems, db.needs], async () => {
     await db.projects.put(s.project);
     await db.tasks.bulkPut(s.tasks);
     await db.updates.bulkPut(s.updates);
     await db.photos.bulkPut(s.photos);
     await db.shopItems.bulkPut(s.shopItems);
+    await db.needs.bulkPut(s.needs);
   });
 }
 
@@ -244,24 +263,27 @@ export interface TaskSnapshot {
   tasks: Task[];
   updates: Update[];
   photos: Photo[];
+  needs: Need[];
   shopLinks: { itemId: string; taskId: string }[]; // items survive; only the link is cut
 }
 
 export async function snapshotTasks(taskIds: string[]): Promise<TaskSnapshot> {
-  const [tasks, updates, photos, linkedItems] = await Promise.all([
+  const [tasks, updates, photos, needs, linkedItems] = await Promise.all([
     db.tasks.where('id').anyOf(taskIds).toArray(),
     db.updates.where('taskId').anyOf(taskIds).toArray(),
     db.photos.where('taskId').anyOf(taskIds).toArray(),
+    db.needs.where('taskId').anyOf(taskIds).toArray(),
     db.shopItems.where('taskId').anyOf(taskIds).toArray()
   ]);
-  return { tasks, updates, photos, shopLinks: linkedItems.map((i) => ({ itemId: i.id, taskId: i.taskId! })) };
+  return { tasks, updates, photos, needs, shopLinks: linkedItems.map((i) => ({ itemId: i.id, taskId: i.taskId! })) };
 }
 
 export async function restoreTaskSnapshot(s: TaskSnapshot): Promise<void> {
-  await db.transaction('rw', db.tasks, db.updates, db.photos, db.shopItems, async () => {
+  await db.transaction('rw', db.tasks, db.updates, db.photos, db.shopItems, db.needs, async () => {
     await db.tasks.bulkPut(s.tasks);
     await db.updates.bulkPut(s.updates);
     await db.photos.bulkPut(s.photos);
+    await db.needs.bulkPut(s.needs);
     for (const link of s.shopLinks) {
       await db.shopItems.update(link.itemId, { taskId: link.taskId });
     }

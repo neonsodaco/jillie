@@ -522,6 +522,45 @@ if ((await text()).includes('How are you feeling')) {
   await clickText('.energy-card', 'Full of beans'); await sleep(400);
 }
 check('Guide Me offers the dateless task too', (await text()).includes('Sort the shed'));
+check('Guide Me tasks wear the full card format too', await page.evaluate(() =>
+  document.querySelectorAll('.hero-pick').length >= 3 && document.querySelectorAll('.feed-item').length === 0
+));
+
+// ---------- 26. things needed for a task + shopping item delete (round 9) ----------
+await page.goto(URL_BASE + '#/projects', { waitUntil: 'networkidle0' }); await sleep(400);
+await openProject('Anytime jobs');
+await openTask('Sort the shed');
+const flabels = await page.$$eval('.field-label', (els) => els.map((e) => e.textContent.trim()));
+check('Things needed sits between notes and shopping', (() => {
+  const iNotes = flabels.findIndex((x) => x.startsWith('Task updates'));
+  const iNeed = flabels.findIndex((x) => x.startsWith('Things needed'));
+  const iShop = flabels.findIndex((x) => x.startsWith('Run out of'));
+  return iNotes !== -1 && iNeed === iNotes + 1 && iShop === iNeed + 1;
+})(), JSON.stringify(flabels));
+await page.type('input[placeholder^="e.g. Drill"]', 'Drill and charger');
+await clickText('.need-add button', 'Add'); await sleep(300);
+check('thing added to the packing list', (await text()).includes('Drill and charger'));
+check('packing field cleared itself', (await page.$eval('input[placeholder^="e.g. Drill"]', (e) => e.value)) === '');
+await page.evaluate(() => document.querySelector('.need-row .tick').click()); await sleep(300);
+check('packed thing ticks off', !!(await page.$('.need-row.packed')));
+await page.evaluate(() => document.querySelector('.need-row .need-name').click()); await sleep(300);
+check('thing opens for edit', (await text()).includes('This thing'));
+await clickText('.sheet-item', 'Delete'); await sleep(400);
+check('thing deleted with undo offered', (await page.$$eval('.need-row', (els) => els.length)) === 0 && (await text()).includes('Undo'));
+await clickText('.snackbar .undo', 'Undo'); await sleep(400);
+check('undo brings the thing back, still packed', !!(await page.$('.need-row.packed')));
+await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
+check('packing list survives a refresh', (await text()).includes('Drill and charger') && !!(await page.$('.need-row.packed')));
+// shopping item delete, from the shared edit sheet
+await page.goto(URL_BASE + '#/shopping', { waitUntil: 'networkidle0' }); await sleep(400);
+await page.evaluate(() => {
+  const row = [...document.querySelectorAll('.shop-row .body.editable')].find((r) => r.textContent.includes('Sandpaper'));
+  row.click();
+}); await sleep(300);
+await clickText('.sheet-item', 'Delete'); await sleep(400);
+t = await text();
+check('shopping item deleted from the list', !((await page.$$eval('.shop-row', (els) => els.map((e) => e.textContent).join(' '))).includes('Sandpaper')));
+check('undo offered for shopping delete', t.includes('Undo'));
 
 await browser.close();
 console.log(failures === 0 ? '\nE2E ALL PASS' : `\n${failures} E2E FAILURES`);

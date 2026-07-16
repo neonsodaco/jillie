@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, uid, active, hardDeleteTasks, taskFamilyIds, snapshotTasks, restoreTaskSnapshot, type Task, type Photo, type Priority, type PhysicalDemand, type StoreType, type Update } from '../db';
+import { db, uid, active, hardDeleteTasks, taskFamilyIds, snapshotTasks, restoreTaskSnapshot, type Task, type Photo, type Priority, type PhysicalDemand, type StoreType, type Update, type Need } from '../db';
 import { labelMap } from '../lib/numbering';
 import { stampWords } from '../lib/dates';
 import { tickMessage } from '../lib/encourage';
@@ -41,6 +41,7 @@ function TaskForm({ task }: { task: Task }) {
       () => db.shopItems.where('taskId').equals(task.id).filter((s) => s.clearedAt === null).toArray(),
       [task.id]
     ) ?? [];
+  const needs = useLiveQuery(() => db.needs.where('taskId').equals(task.id).toArray(), [task.id]) ?? [];
   const live = useLiveQuery(() => db.tasks.get(task.id), [task.id]) ?? task;
 
   // local drafts so typing never fights the database
@@ -61,6 +62,9 @@ function TaskForm({ task }: { task: Task }) {
   const [noteMenu, setNoteMenu] = useState<Update | null>(null);
   const [editingNote, setEditingNote] = useState<Update | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
+  const [needName, setNeedName] = useState('');
+  const [editingNeed, setEditingNeed] = useState<Need | null>(null);
+  const [needDraft, setNeedDraft] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
@@ -75,6 +79,7 @@ function TaskForm({ task }: { task: Task }) {
   const label = useMemo(() => labelMap(active(siblings)).get(task.id) ?? '', [siblings, task.id]);
   const sortedUpdates = useMemo(() => [...updates].sort((a, b) => b.createdAt - a.createdAt), [updates]);
   const sortedPhotos = useMemo(() => [...photos].sort((a, b) => a.createdAt - b.createdAt), [photos]);
+  const sortedNeeds = useMemo(() => [...needs].sort((a, b) => a.createdAt - b.createdAt), [needs]);
 
   const save = (patch: Partial<Task>) => void db.tasks.update(task.id, patch);
 
@@ -110,6 +115,36 @@ function TaskForm({ task }: { task: Task }) {
       setShopName(itemName);
       undo.toast("That didn't save — try again.");
     }
+  }
+
+  async function addNeed() {
+    const itemName = needName.trim();
+    if (!itemName) return;
+    setNeedName(''); // clear straight away, ready for the next thing
+    try {
+      await db.needs.add({ id: uid(), taskId: task.id, name: itemName, packed: false, createdAt: Date.now() });
+    } catch {
+      setNeedName(itemName);
+      undo.toast("That didn't save — try again.");
+    }
+  }
+
+  function saveNeedEdit() {
+    const text = needDraft.trim();
+    if (!editingNeed || !text) return;
+    void db.needs.update(editingNeed.id, { name: text });
+    setEditingNeed(null);
+  }
+
+  function deleteNeed(n: Need) {
+    setEditingNeed(null);
+    void db.needs.delete(n.id).then(() => {
+      undo.run({
+        message: `${n.name} taken off the list.`,
+        revert: () => db.needs.add(n).then(() => undefined),
+        commit: () => undefined
+      });
+    });
   }
 
   async function addUpdate() {
@@ -344,6 +379,53 @@ function TaskForm({ task }: { task: Task }) {
 
       <div className="field">
         <FieldLabel
+          text="Things needed for this task"
+          help="Your packing list: everything to gather up before you start — tools, materials, bits from the shed. Tick each thing off as you pack it. This one's separate from the shopping list; nothing here gets bought."
+        />
+        {!live.done && (
+          <div className="need-add">
+            <input
+              type="text"
+              value={needName}
+              placeholder="e.g. Drill, drop sheet, ladder"
+              aria-label="Thing needed for this task"
+              onChange={(e) => setNeedName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addNeed()}
+            />
+            <button className="btn btn-tint" disabled={!needName.trim()} onClick={addNeed}>
+              <IconPlus size={16} /> Add
+            </button>
+          </div>
+        )}
+        {sortedNeeds.length > 0 && (
+          <div className="card need-list">
+            {sortedNeeds.map((n) => (
+              <div key={n.id} className={`need-row${n.packed ? ' packed' : ''}`}>
+                <button
+                  className={`tick small${n.packed ? ' on' : ''}`}
+                  aria-label={n.packed ? `${n.name} — not packed after all` : `Packed ${n.name}`}
+                  onClick={() => void db.needs.update(n.id, { packed: !n.packed })}
+                >
+                  <IconTick />
+                </button>
+                <button
+                  className="need-name"
+                  aria-label={`Change or delete ${n.name}`}
+                  onClick={() => {
+                    setNeedDraft(n.name);
+                    setEditingNeed(n);
+                  }}
+                >
+                  {n.name}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="field">
+        <FieldLabel
           text="Run out of something?"
           help="Pop it on the shopping list without leaving this task. Type the item, pick where it comes from, tap Add. The full list lives under Shopping at the bottom of the app."
         />
@@ -430,6 +512,24 @@ function TaskForm({ task }: { task: Task }) {
             }}
           />
           <SheetItem icon={<IconTrash />} label="Delete note" danger onClick={() => deleteNote(noteMenu)} />
+        </Sheet>
+      )}
+
+      {editingNeed && (
+        <Sheet onClose={() => setEditingNeed(null)} label="This thing">
+          <h2>This thing</h2>
+          <div className="field">
+            <input
+              type="text"
+              value={needDraft}
+              onChange={(e) => setNeedDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && saveNeedEdit()}
+            />
+          </div>
+          <button className="btn btn-primary btn-block" disabled={!needDraft.trim()} onClick={saveNeedEdit}>
+            Save
+          </button>
+          <SheetItem icon={<IconTrash />} label="Delete — take it off this list" danger onClick={() => deleteNeed(editingNeed)} />
         </Sheet>
       )}
 
