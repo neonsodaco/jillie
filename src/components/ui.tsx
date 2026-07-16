@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { COLOURS, type ColourKey } from '../db';
-import { customColourVars } from '../lib/colour';
+import { customColourVars, pastelHex, hueOf, MIX_S, MIX_L } from '../lib/colour';
 import { IconHome, IconList, IconCart, IconCompass } from './icons';
 
 export const colourClass = (c: ColourKey) => `c-${c}`;
@@ -132,6 +132,10 @@ export function ConfirmSheet({
 }
 
 /* ---------- colour swatches ---------- */
+// pine gave up its spot to the mix-your-own swatch; the key and CSS stay
+// so projects already wearing pine keep rendering
+const PICKER_COLOURS = COLOURS.filter((c) => c.key !== 'pine');
+
 export function ColourPicker({
   value,
   custom = null,
@@ -141,32 +145,53 @@ export function ColourPicker({
   custom?: string | null;
   onChange: (c: ColourKey, custom: string | null) => void;
 }) {
+  const [mixing, setMixing] = useState(false);
+  const hue = (custom ? hueOf(custom) : null) ?? 150;
   return (
-    <div className="swatch-grid" role="radiogroup" aria-label="Project colour">
-      {COLOURS.map((c) => (
+    <>
+      <div className="swatch-grid" role="radiogroup" aria-label="Project colour">
+        {PICKER_COLOURS.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            role="radio"
+            aria-checked={!custom && value === c.key}
+            aria-label={c.label}
+            className={`swatch ${colourClass(c.key)}${!custom && value === c.key ? ' sel' : ''}`}
+            onClick={() => {
+              setMixing(false);
+              onChange(c.key, null);
+            }}
+          />
+        ))}
+        {/* the 12th swatch: mix your own pastel — opens the slider below */}
         <button
-          key={c.key}
           type="button"
-          role="radio"
-          aria-checked={!custom && value === c.key}
-          aria-label={c.label}
-          className={`swatch ${colourClass(c.key)}${!custom && value === c.key ? ' sel' : ''}`}
-          onClick={() => onChange(c.key, null)}
+          aria-label="Mix your own pastel colour"
+          aria-expanded={mixing}
+          className={`swatch swatch-custom${custom ? ' sel' : ''}`}
+          style={custom ? { ...customColourVars(custom), background: 'var(--c)' } : undefined}
+          onClick={() => {
+            if (!custom) onChange(value, pastelHex(hue));
+            setMixing((m) => !m);
+          }}
         />
-      ))}
-      {/* the 13th swatch: her own colour — a label so one tap opens the phone's picker */}
-      <label
-        className={`swatch swatch-custom${custom ? ' sel' : ''}`}
-        style={custom ? { ...customColourVars(custom), background: 'var(--c)' } : undefined}
-      >
-        <input
-          type="color"
-          value={custom ?? '#7ed9a0'}
-          aria-label="Pick your own colour"
-          onChange={(e) => onChange(value, e.target.value)}
-        />
-      </label>
-    </div>
+      </div>
+      {mixing && (
+        <div className="pastel-mixer">
+          <div className="mixer-label">Slide to mix your own pastel</div>
+          <input
+            type="range"
+            min={0}
+            max={359}
+            value={hue}
+            aria-label="Your pastel colour"
+            style={{ '--mix': `hsl(${hue}, ${MIX_S}%, ${MIX_L}%)` } as CSSProperties}
+            onChange={(e) => onChange(value, pastelHex(Number(e.target.value)))}
+          />
+        </div>
+      )}
+    </>
   );
 }
 

@@ -67,7 +67,13 @@ export default function Dashboard() {
 
   return (
     <div className="screen">
-      <header className="topbar">
+      {/* the greeting owns the top-left corner; help and options sit beside it */}
+      <header className="topbar greet-bar">
+        <div className="greeting">
+          <h1>{greeting(NAME)}</h1>
+          <div className="date">{todayWords()}</div>
+          {recentWins(tasks) > 0 && <div className="wins">{winsLine(recentWins(tasks))}</div>}
+        </div>
         <div className="spacer" />
         <Link to="/help" className="iconbtn" aria-label="Help — how this works">
           <IconHelp />
@@ -76,12 +82,6 @@ export default function Dashboard() {
           <IconDots />
         </button>
       </header>
-
-      <div className="greeting">
-        <h1>{greeting(NAME)}</h1>
-        <div className="date">{todayWords()}</div>
-        {recentWins(tasks) > 0 && <div className="wins">{winsLine(recentWins(tasks))}</div>}
-      </div>
 
       {activeProjects.length > 0 && (
         <>
@@ -119,12 +119,11 @@ export default function Dashboard() {
           {visibleFeed.map((item, i) => {
             const { task, project, label, why, overdue, heading } = item;
             const showHeading = i === 0 || heading !== visibleFeed[i - 1].heading;
-            const isTop = i < 2;
             return (
               <section key={task.id}>
                 {showHeading && <div className="feed-head">{heading}</div>}
-                {isTop ? (
-                  <button
+                {/* every task wears the full card with its colour band — no skinny rows */}
+                <button
                     className={`hero-pick card ${colourClass(project.colour)}`}
                     style={colourStyle(project)}
                     onClick={() => navigate(`/task/${task.id}`)}
@@ -138,23 +137,6 @@ export default function Dashboard() {
                       {why ? ` \u00b7 ${why}` : ''}
                     </span>
                   </button>
-                ) : (
-                  <button
-                    className={`feed-item card ${colourClass(project.colour)}`}
-                    style={colourStyle(project)}
-                    onClick={() => navigate(`/task/${task.id}`)}
-                  >
-                    <span className="dot" aria-hidden />
-                    {label && <span className="stepno">{label}</span>}
-                    <span className="body">
-                      <span className="name">{task.name}</span>
-                      <span className={`why${overdue ? ' overdue' : ''}`}>
-                        <strong>{project.name}</strong>
-                        {why ? ` · ${why}` : ''}
-                      </span>
-                    </span>
-                  </button>
-                )}
               </section>
             );
           })}

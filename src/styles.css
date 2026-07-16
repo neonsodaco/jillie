@@ -96,6 +96,10 @@ a { color: inherit; text-decoration: none; }
 .greeting { padding: 0.5rem 0.25rem 1.125rem; }
 .greeting h1 { font-size: 1rem; }
 .greeting .date { color: var(--ink-soft); font-size: 0.875rem; }
+/* Today only: greeting lives inside the top bar, snug in the corner */
+.greet-bar { align-items: flex-start; padding-bottom: 0.875rem; }
+.greet-bar .greeting { padding: 0 0.25rem; }
+.greet-bar .iconbtn { margin-top: -0.5rem; }
 
 /* ---------- cards ---------- */
 .card {
@@ -327,12 +331,37 @@ a { color: inherit; text-decoration: none; }
 }
 .swatch.sel { border-color: var(--ink); transform: scale(1.05); }
 .swatch.sel::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1rem; }
-/* the pick-your-own swatch: a rainbow wheel until a colour is chosen */
+/* the mix-your-own swatch: a pastel rainbow wheel until a colour is mixed */
 .swatch-custom {
-  display: block; overflow: hidden; cursor: pointer;
+  overflow: hidden; cursor: pointer;
   background: conic-gradient(#f9a870, #f48fbe, #c393f2, #85aff5, #6fd1c4, #7ed9a0, #f9a870);
 }
-.swatch-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+/* the pastel mixer: every colour on the slider is already a pastel —
+   what she sees is exactly what the project wears */
+.pastel-mixer { margin-top: 0.875rem; }
+.mixer-label {
+  font-size: 0.75rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-faint); margin: 0 0.25rem 0.625rem;
+}
+.pastel-mixer input[type='range'] {
+  -webkit-appearance: none; appearance: none; display: block; width: 100%;
+  height: 1.75rem; border-radius: 999px; outline: none;
+  background: linear-gradient(
+    to right,
+    hsl(0, 85%, 74%), hsl(30, 85%, 74%), hsl(60, 85%, 74%), hsl(90, 85%, 74%),
+    hsl(120, 85%, 74%), hsl(150, 85%, 74%), hsl(180, 85%, 74%), hsl(210, 85%, 74%),
+    hsl(240, 85%, 74%), hsl(270, 85%, 74%), hsl(300, 85%, 74%), hsl(330, 85%, 74%),
+    hsl(359, 85%, 74%)
+  );
+}
+.pastel-mixer input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 2.25rem; height: 2.25rem; border-radius: 50%;
+  background: var(--mix, var(--card)); border: 3px solid var(--card); box-shadow: 0 1px 4px rgba(70, 55, 40, 0.35);
+}
+.pastel-mixer input[type='range']::-moz-range-thumb {
+  width: 2.25rem; height: 2.25rem; border-radius: 50%;
+  background: var(--mix, var(--card)); border: 3px solid var(--card); box-shadow: 0 1px 4px rgba(70, 55, 40, 0.35);
+}
 
 /* ---------- updates feed ---------- */
 .update-item { padding: 0.625rem 0; border-bottom: 1px solid var(--line); }

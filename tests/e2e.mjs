@@ -72,7 +72,7 @@ check('new project button on Today', !!(await page.$('.new-proj-inline')));
 await clickText('.bottomnav a', 'Projects'); await sleep(300);
 await clickText('button', 'New project'); await sleep(300);
 await page.type('.sheet input[type=text]', 'Laundry reno');
-check('twelve colours plus pick-your-own', (await page.$$eval('.swatch', (els) => els.length)) === 13);
+check('eleven colours plus mix-your-own pastel', (await page.$$eval('.swatch', (els) => els.length)) === 12);
 const swatchCols = await page.$$eval('.swatch', (els) => els.map((e) => getComputedStyle(e).backgroundColor));
 check('palette is the pastel flower set', swatchCols.includes('rgb(244, 143, 190)') && swatchCols.includes('rgb(117, 213, 232)') && !swatchCols.includes('rgb(138, 111, 75)'), JSON.stringify(swatchCols));
 await page.evaluate(() => [...document.querySelectorAll('.swatch')][2].click()); // blue
@@ -376,6 +376,14 @@ await clickText('.quickadd button', 'Add'); await sleep(300);
 await page.evaluate(() => document.querySelector('.tick').click()); await sleep(600);
 check('tiny project finished', (await text()).includes('Project finished'));
 check('archive button offered on finished project', (await text()).includes('Archive this project'));
+check('archive button purple, under the task list', await page.evaluate(() => {
+  const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Archive this project'));
+  if (!btn) return false;
+  const rows = document.querySelectorAll('.task-row');
+  const last = rows[rows.length - 1];
+  return getComputedStyle(btn).backgroundColor === 'rgb(124, 58, 237)' &&
+    !!(last && (last.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING));
+}));
 await page.goto(URL_BASE + '#/projects', { waitUntil: 'networkidle0' }); await sleep(400);
 await openProject('Laundry reno');
 check('no archive button while tasks remain', !(await text()).includes('Archive this project'));
@@ -450,23 +458,25 @@ await page.evaluate(() => {
   card.querySelector('[aria-label^="Options for"]').click();
 }); await sleep(300);
 await clickText('.sheet-item', 'Change colour'); await sleep(300);
-check('custom swatch is the 13th option', (await page.$$eval('.swatch', (els) => els.length)) === 13 && !!(await page.$('.swatch-custom input[type=color]')));
+check('mix-your-own swatch is the 12th option', (await page.$$eval('.swatch', (els) => els.length)) === 12 && !!(await page.$('.swatch-custom')));
+await page.evaluate(() => document.querySelector('.swatch-custom').click()); await sleep(300);
+check('pastel mixer slider appears', !!(await page.$('.pastel-mixer input[type=range]')));
+check('tapping the swatch already picks a pastel', !!(await page.$('.swatch-custom.sel')));
 await page.evaluate(() => {
-  const i = document.querySelector('.swatch-custom input[type=color]');
+  const i = document.querySelector('.pastel-mixer input[type=range]');
   const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-  s.call(i, '#1c2d5e'); // deep navy — must come out pastel, ink text readable
+  s.call(i, '220'); // a blue pastel — the slider only offers pastels
   i.dispatchEvent(new Event('input', { bubbles: true }));
   i.dispatchEvent(new Event('change', { bubbles: true }));
 }); await sleep(400);
-check('custom pick keeps the sheet open to fiddle', !!(await page.$('.sheet')));
-check('custom swatch shows as selected', !!(await page.$('.swatch-custom.sel')));
+check('mixing keeps the sheet open to fiddle', !!(await page.$('.sheet')));
 await page.evaluate(() => document.querySelector('.sheet-backdrop').click()); await sleep(300);
 const customBg = await page.evaluate(() => {
   const card = [...document.querySelectorAll('.proj-card')].find((c) => c.textContent.includes('Deck oiling'));
   return getComputedStyle(card).backgroundColor;
 });
-check('project card wears her own colour', !pastelBlooms.includes(customBg), customBg);
-check('her pick is pastelised so text stays readable', (() => {
+check('project card wears her mixed colour', !pastelBlooms.includes(customBg), customBg);
+check('the mixed colour is a pastel, ink text readable', (() => {
   const [r, g, b] = customBg.match(/\d+/g).map(Number);
   return (Math.max(r, g, b) + Math.min(r, g, b)) / 2 / 255 > 0.6;
 })(), customBg);
@@ -483,10 +493,26 @@ await page.type('.sheet input[type=text]', 'Anytime jobs');
 await clickText('button', 'Create project'); await sleep(500);
 await page.type('.quickadd input', 'Sort the shed');
 await clickText('.quickadd button', 'Add'); await sleep(300);
+// a task for Deck oiling too, so Today carries three cards
+await page.goto(URL_BASE + '#/projects', { waitUntil: 'networkidle0' }); await sleep(400);
+await openProject('Deck oiling');
+await page.type('.quickadd input', 'Oil the deck boards');
+await clickText('.quickadd button', 'Add'); await sleep(300);
 await page.goto(URL_BASE + '#/', { waitUntil: 'networkidle0' }); await sleep(400);
 t = await text();
 check('dateless task shows under Ready when you are', /ready when you are/i.test(t) && t.includes('Sort the shed'));
 check('urgent groups still come first', t.toLowerCase().indexOf('running late') !== -1 && t.toLowerCase().indexOf('running late') < t.toLowerCase().indexOf('ready when you are'));
+check('all Today tasks wear the full card format', await page.evaluate(() =>
+  document.querySelectorAll('.hero-pick').length >= 3 && document.querySelectorAll('.feed-item').length === 0
+));
+check('greeting owns the top-left corner', await page.evaluate(() => {
+  const g = document.querySelector('.greet-bar .greeting');
+  const help = document.querySelector('[aria-label^="Help"]');
+  if (!g || !help) return false;
+  const gr = g.getBoundingClientRect();
+  const hr = help.getBoundingClientRect();
+  return gr.left < 40 && Math.abs(gr.top - hr.top) < 28;
+}));
 // and Guide Me still offers the same dateless task
 await page.goto(URL_BASE + '#/guide', { waitUntil: 'networkidle0' }); await sleep(400);
 if ((await text()).includes('How are you feeling')) {

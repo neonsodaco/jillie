@@ -240,14 +240,7 @@ export default function ProjectView() {
         <div className="progress-words">{progressWords(done, total)}</div>
       </div>
 
-      {allDone && (
-        <>
-          <div className="celebrate">Project finished — well done, Jillian.</div>
-          <button className="btn btn-tint btn-block" style={{ marginBottom: '1rem' }} onClick={archiveProject}>
-            <IconArchive size={18} /> Archive this project
-          </button>
-        </>
-      )}
+      {allDone && <div className="celebrate">Project finished — well done, Jillian.</div>}
 
       {latestNotes.length > 0 && (
         <>
@@ -326,6 +319,12 @@ export default function ProjectView() {
           </div>
         );
       })}
+
+      {allDone && (
+        <button className="btn btn-primary btn-block" style={{ marginTop: '0.75rem' }} onClick={archiveProject}>
+          <IconArchive size={18} /> Archive this project
+        </button>
+      )}
 
       <div className="quickadd">
         <input
