@@ -112,7 +112,7 @@ async function writeRestored(
     await db.updates.bulkAdd(updates);
     await db.photos.bulkAdd(photos);
     if (shopItems.length) await db.shopItems.bulkAdd(shopItems.map((i) => ({ ...i, clearedAt: i.clearedAt ?? null })));
-    if (needs.length) await db.needs.bulkAdd(needs.map((n) => ({ ...n, packed: n.packed ?? false })));
+    if (needs.length) await db.needs.bulkAdd(needs.map((n) => ({ ...n, packed: n.packed ?? false, shopItemId: n.shopItemId ?? null })));
   });
 }
 

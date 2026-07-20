@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, uid, active, hardDeleteTasks, taskFamilyIds, snapshotTasks, restoreTaskSnapshot, type Task, type Photo, type Priority, type PhysicalDemand, type StoreType, type Update, type Need } from '../db';
+import { db, uid, active, hardDeleteTasks, taskFamilyIds, snapshotTasks, restoreTaskSnapshot, makeShopItem, lastStore, rememberStore, linkNeedToShopping, deleteNeedEverywhere, restoreNeedSnapshot, type Task, type Photo, type Priority, type PhysicalDemand, type ShopItem, type StoreType, type Update, type Need } from '../db';
 import { labelMap } from '../lib/numbering';
 import { stampWords } from '../lib/dates';
 import { tickMessage } from '../lib/encourage';
@@ -11,7 +11,7 @@ import { ShopItemEditSheet } from '../components/ShopItemSheet';
 import { StorePicker } from '../components/StorePicker';
 import { compressPhoto, storageTight } from '../lib/images';
 import { Sheet, SheetItem, ConfirmSheet, FieldLabel, colourClass, colourStyle } from '../components/ui';
-import { IconBack, IconDots, IconTick, IconTrash, IconCamera, IconPlus, IconPencil } from '../components/icons';
+import { IconBack, IconDots, IconTick, IconTrash, IconCamera, IconPlus, IconPencil, IconCart } from '../components/icons';
 import { useUndo } from '../lib/undo';
 
 export default function TaskView() {
@@ -41,7 +41,12 @@ function TaskForm({ task }: { task: Task }) {
       () => db.shopItems.where('taskId').equals(task.id).filter((s) => s.clearedAt === null).toArray(),
       [task.id]
     ) ?? [];
+  const shopItemsById = useMemo(() => new Map(shopItems.map((i) => [i.id, i])), [shopItems]);
   const needs = useLiveQuery(() => db.needs.where('taskId').equals(task.id).toArray(), [task.id]) ?? [];
+  // a packing thing's live link. Once its item is bought AND cleared, the
+  // purchase is finished history: the badge goes, the cart comes back, and
+  // she can put the thing on a fresh shopping trip if she runs out again.
+  const linkedItem = (n: Need): ShopItem | null => (n.shopItemId ? shopItemsById.get(n.shopItemId) ?? null : null);
   const live = useLiveQuery(() => db.tasks.get(task.id), [task.id]) ?? task;
 
   // local drafts so typing never fights the database
@@ -50,9 +55,7 @@ function TaskForm({ task }: { task: Task }) {
   const [involved, setInvolved] = useState(task.involvedNotes);
   const [newUpdate, setNewUpdate] = useState('');
   const [shopName, setShopName] = useState('');
-  const [shopStore, setShopStore] = useState<StoreType>(
-    () => (localStorage.getItem('shop.lastStore') as StoreType) || 'Hardware Store'
-  );
+  const [shopStore, setShopStore] = useState<StoreType>(lastStore);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [viewing, setViewing] = useState<Photo | null>(null);
@@ -67,6 +70,7 @@ function TaskForm({ task }: { task: Task }) {
   const [needDraft, setNeedDraft] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
+  const cartBusy = useRef(false); // one packing thing onto the shopping list at a time
 
   // the description grows to fit its text exactly — no drag handle
   useEffect(() => {
@@ -99,17 +103,8 @@ function TaskForm({ task }: { task: Task }) {
     if (!itemName) return;
     setShopName(''); // clear straight away, ready for the next item
     try {
-      await db.shopItems.add({
-        id: uid(),
-        projectId: task.projectId,
-        taskId: task.id,
-        name: itemName,
-        store: shopStore,
-        done: false,
-        clearedAt: null,
-        createdAt: Date.now()
-      });
-      localStorage.setItem('shop.lastStore', shopStore);
+      await db.shopItems.add(makeShopItem({ projectId: task.projectId, taskId: task.id, name: itemName, store: shopStore }));
+      rememberStore(shopStore);
       undo.toast(`${itemName} added to the shopping list.`);
     } catch {
       setShopName(itemName);
@@ -122,10 +117,24 @@ function TaskForm({ task }: { task: Task }) {
     if (!itemName) return;
     setNeedName(''); // clear straight away, ready for the next thing
     try {
-      await db.needs.add({ id: uid(), taskId: task.id, name: itemName, packed: false, createdAt: Date.now() });
+      await db.needs.add({ id: uid(), taskId: task.id, name: itemName, packed: false, shopItemId: null, createdAt: Date.now() });
     } catch {
       setNeedName(itemName);
       undo.toast("That didn't save — try again.");
+    }
+  }
+
+  /** Pop a packing-list thing onto the shopping list as a linked item — buying it packs it. */
+  async function addNeedToShopping(n: Need) {
+    if (cartBusy.current) return; // double-tap guard: one add at a time
+    cartBusy.current = true;
+    try {
+      await linkNeedToShopping(n, task.projectId, lastStore());
+      undo.toast(`${n.name} added to the shopping list.`);
+    } catch {
+      undo.toast("That didn't save — try again.");
+    } finally {
+      cartBusy.current = false;
     }
   }
 
@@ -138,10 +147,11 @@ function TaskForm({ task }: { task: Task }) {
 
   function deleteNeed(n: Need) {
     setEditingNeed(null);
-    void db.needs.delete(n.id).then(() => {
+    // its linked unbought shopping item goes with it; undo restores both
+    void deleteNeedEverywhere(n).then((snap) => {
       undo.run({
         message: `${n.name} taken off the list.`,
-        revert: () => db.needs.add(n).then(() => undefined),
+        revert: () => restoreNeedSnapshot(snap),
         commit: () => undefined
       });
     });
@@ -399,27 +409,45 @@ function TaskForm({ task }: { task: Task }) {
         )}
         {sortedNeeds.length > 0 && (
           <div className="card need-list">
-            {sortedNeeds.map((n) => (
-              <div key={n.id} className={`need-row${n.packed ? ' packed' : ''}`}>
-                <button
-                  className={`tick small${n.packed ? ' on' : ''}`}
-                  aria-label={n.packed ? `${n.name} — not packed after all` : `Packed ${n.name}`}
-                  onClick={() => void db.needs.update(n.id, { packed: !n.packed })}
-                >
-                  <IconTick />
-                </button>
-                <button
-                  className="need-name"
-                  aria-label={`Change or delete ${n.name}`}
-                  onClick={() => {
-                    setNeedDraft(n.name);
-                    setEditingNeed(n);
-                  }}
-                >
-                  {n.name}
-                </button>
-              </div>
-            ))}
+            {sortedNeeds.map((n) => {
+              const link = linkedItem(n);
+              return (
+                <div key={n.id} className={`need-row${n.packed ? ' packed' : ''}`}>
+                  <button
+                    className={`tick small${n.packed ? ' on' : ''}`}
+                    aria-label={n.packed ? `${n.name} — not packed after all` : `Packed ${n.name}`}
+                    onClick={() => void db.needs.update(n.id, { packed: !n.packed })}
+                  >
+                    <IconTick />
+                  </button>
+                  <button
+                    className="need-name"
+                    aria-label={`Change or delete ${n.name}`}
+                    onClick={() => {
+                      setNeedDraft(n.name);
+                      setEditingNeed(n);
+                    }}
+                  >
+                    {n.name}
+                  </button>
+                  {link ? (
+                    <span className={`need-linked${link.done ? ' bought' : ''}`}>
+                      {link.done ? 'Bought' : 'On the list'}
+                    </span>
+                  ) : (
+                    !live.done && (
+                      <button
+                        className="iconbtn need-cart"
+                        aria-label={`Add ${n.name} to the shopping list`}
+                        onClick={() => addNeedToShopping(n)}
+                      >
+                        <IconCart size={18} />
+                      </button>
+                    )
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

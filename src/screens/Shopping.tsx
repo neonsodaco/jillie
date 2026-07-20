@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, uid, active, STORE_TYPES, type StoreType, type ShopItem } from '../db';
+import { db, active, makeShopItem, lastStore, rememberStore, setShopItemBought, STORE_TYPES, type StoreType, type ShopItem } from '../db';
 import { progress } from '../lib/numbering';
 import { Sheet, colourClass, colourStyle, FieldLabel } from '../components/ui';
 import { ShopItemEditSheet } from '../components/ShopItemSheet';
@@ -63,8 +63,9 @@ export default function Shopping() {
     return [...m.entries()];
   }, [toBuy]);
 
-  async function toggle(item: ShopItem) {
-    await db.shopItems.update(item.id, { done: !item.done });
+  function toggle(item: ShopItem) {
+    // buying a linked packing-list thing packs it too (one-way, in db.ts)
+    void setShopItemBought(item, !item.done).catch(() => undo.toast("That didn't save — try again."));
   }
 
   function clearGot() {
@@ -178,8 +179,8 @@ export default function Shopping() {
             // close first, then save — the popup never lingers
             setAdding(false);
             db.shopItems
-              .add({ id: uid(), projectId, taskId: null, name, store, done: false, clearedAt: null, createdAt: Date.now() })
-              .then(() => localStorage.setItem('shop.lastStore', store))
+              .add(makeShopItem({ projectId, taskId: null, name, store }))
+              .then(() => rememberStore(store))
               .catch(() => undo.toast("That didn't save — try again."));
           }}
         />
@@ -201,9 +202,7 @@ function AddItemSheet({
 }) {
   const [name, setName] = useState('');
   const [projectId, setProjectId] = useState(defaultProject ?? projects[0]?.id ?? '');
-  const [store, setStore] = useState<StoreType>(
-    () => (localStorage.getItem('shop.lastStore') as StoreType) || 'Hardware Store'
-  );
+  const [store, setStore] = useState<StoreType>(lastStore);
   return (
     <Sheet onClose={onClose} label="Add to the shopping list">
       <h2>Add to the shopping list</h2>

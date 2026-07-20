@@ -99,6 +99,7 @@ export interface Need {
   taskId: string;
   name: string;
   packed: boolean; // gathered and ready to take out
+  shopItemId: string | null; // linked shopping-list item; buying it ticks this off as packed
   createdAt: number;
 }
 
@@ -173,6 +174,19 @@ class TrackerDB extends Dexie {
     this.version(5).stores({
       needs: 'id, taskId'
     });
+    // a packing-list thing can be linked onto the shopping list
+    this.version(6)
+      .stores({
+        needs: 'id, taskId, shopItemId'
+      })
+      .upgrade((tx) =>
+        tx
+          .table('needs')
+          .toCollection()
+          .modify((n) => {
+            if (n.shopItemId === undefined) n.shopItemId = null;
+          })
+      );
   }
 }
 
@@ -186,6 +200,88 @@ if (typeof window !== 'undefined') {
 
 export const uid = (): string =>
   crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+/** Single owner of the shopping-item record shape — every add goes through here. */
+export function makeShopItem(fields: { projectId: string; taskId: string | null; name: string; store: StoreType }): ShopItem {
+  return { id: uid(), ...fields, done: false, clearedAt: null, createdAt: Date.now() };
+}
+
+/** The store she used last time, remembered across every add path. */
+export const lastStore = (): StoreType => (localStorage.getItem('shop.lastStore') as StoreType) || 'Hardware Store';
+export const rememberStore = (s: StoreType): void => localStorage.setItem('shop.lastStore', s);
+
+/* ---- packing-list <-> shopping-list link lifecycle -----------------------
+   One owner for every step, each in a single transaction, so the two lists
+   can never half-agree: create the link, propagate bought -> packed, and
+   tear the link down when either end is deleted. */
+
+/** Tick a shopping item bought (or not). Buying packs any linked packing thing;
+    un-ticking never wipes a manual pack. */
+export async function setShopItemBought(item: ShopItem, bought: boolean): Promise<void> {
+  await db.transaction('rw', db.shopItems, db.needs, async () => {
+    await db.shopItems.update(item.id, { done: bought });
+    if (bought && item.taskId) {
+      await db.needs.where('shopItemId').equals(item.id).modify({ packed: true });
+    }
+  });
+}
+
+/** Put a packing thing onto the shopping list as a linked item, atomically. */
+export async function linkNeedToShopping(need: Need, projectId: string, store: StoreType): Promise<void> {
+  await db.transaction('rw', db.shopItems, db.needs, async () => {
+    const item = makeShopItem({ projectId, taskId: need.taskId, name: need.name, store });
+    await db.shopItems.add(item);
+    const updated = await db.needs.update(need.id, { shopItemId: item.id });
+    if (!updated) throw new Error('packing item gone'); // rolls the orphan item back out
+  });
+}
+
+/** Take a shopping item off the list; linked packing things let go of it.
+    Returns the ids of the needs that were linked, so undo can re-tie them. */
+export async function deleteShopItem(item: ShopItem): Promise<string[]> {
+  return db.transaction('rw', db.shopItems, db.needs, async () => {
+    const linkedIds = (await db.needs.where('shopItemId').equals(item.id).primaryKeys()) as string[];
+    if (linkedIds.length) await db.needs.where('shopItemId').equals(item.id).modify({ shopItemId: null });
+    await db.shopItems.delete(item.id);
+    return linkedIds;
+  });
+}
+
+export async function restoreShopItem(item: ShopItem, linkedNeedIds: string[]): Promise<void> {
+  await db.transaction('rw', db.shopItems, db.needs, async () => {
+    await db.shopItems.add(item);
+    for (const id of linkedNeedIds) await db.needs.update(id, { shopItemId: item.id });
+  });
+}
+
+export interface NeedSnapshot {
+  need: Need;
+  item: ShopItem | null; // the linked unbought item that went with it
+}
+
+/** Delete a packing thing; its linked UNBOUGHT shopping item goes with it
+    (a bought one is history and stays). */
+export async function deleteNeedEverywhere(need: Need): Promise<NeedSnapshot> {
+  return db.transaction('rw', db.needs, db.shopItems, async () => {
+    let item: ShopItem | null = null;
+    if (need.shopItemId) {
+      const linked = await db.shopItems.get(need.shopItemId);
+      if (linked && !linked.done) {
+        item = linked;
+        await db.shopItems.delete(linked.id);
+      }
+    }
+    await db.needs.delete(need.id);
+    return { need, item };
+  });
+}
+
+export async function restoreNeedSnapshot(s: NeedSnapshot): Promise<void> {
+  await db.transaction('rw', db.needs, db.shopItems, async () => {
+    if (s.item) await db.shopItems.add(s.item);
+    await db.needs.add(s.need);
+  });
+}
 
 /** Rows a screen should ever see: not soft-deleted. */
 export const alive = <T extends { deletedAt: number | null }>(rows: T[]): T[] =>
@@ -286,6 +382,14 @@ export async function restoreTaskSnapshot(s: TaskSnapshot): Promise<void> {
     await db.needs.bulkPut(s.needs);
     for (const link of s.shopLinks) {
       await db.shopItems.update(link.itemId, { taskId: link.taskId });
+    }
+    // the shopping list kept living during the undo window — anything
+    // bought in the meantime packs its restored packing thing
+    for (const n of s.needs) {
+      if (n.shopItemId && !n.packed) {
+        const item = await db.shopItems.get(n.shopItemId);
+        if (item?.done) await db.needs.update(n.id, { packed: true });
+      }
     }
   });
 }

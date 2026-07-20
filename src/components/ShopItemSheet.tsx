@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { db, STORE_TYPES, type ShopItem, type StoreType } from '../db';
+import { db, deleteShopItem, restoreShopItem, rememberStore, STORE_TYPES, type ShopItem, type StoreType } from '../db';
 import { Sheet, SheetItem, FieldLabel } from './ui';
 import { IconTrash } from './icons';
 import { useUndo } from '../lib/undo';
@@ -13,16 +13,17 @@ export function ShopItemEditSheet({ item, onClose }: { item: ShopItem; onClose: 
   async function saveItem() {
     if (!name.trim()) return;
     await db.shopItems.update(item.id, { name: name.trim(), store });
-    localStorage.setItem('shop.lastStore', store);
+    rememberStore(store);
     onClose();
   }
 
   function deleteItem() {
     onClose();
-    void db.shopItems.delete(item.id).then(() => {
+    // linked packing things let go of the item; undo re-ties them
+    void deleteShopItem(item).then((linkedNeedIds) => {
       undo.run({
         message: `${item.name} taken off the shopping list.`,
-        revert: () => db.shopItems.add(item).then(() => undefined),
+        revert: () => restoreShopItem(item, linkedNeedIds),
         commit: () => undefined
       });
     });
